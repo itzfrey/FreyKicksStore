@@ -1,0 +1,106 @@
+@page "/admin/inventory"
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using Microsoft.EntityFrameworkCore
+@using FreyKicksStore.Models
+@inject FreyKicksStore.Data.ApplicationDbContext DbContext
+@inject NavigationManager NavigationManager
+@inject IJSRuntime Js
+
+<PageTitle>Inventory</PageTitle>
+
+<h3>Product Inventory</h3>
+
+<div class="mb-3">
+    <a class="btn btn-primary" href="/admin/add-product">Add Product</a>
+</div>
+
+@if (products == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!products.Any())
+{
+    <p>No products found.</p>
+}
+else
+{
+    <div class="list-group">
+        @foreach (var p in products)
+        {
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h5>@p.Name</h5>
+                        <div class="text-muted">@p.Category — @p.Gender</div>
+                        @if (!string.IsNullOrEmpty(p.ImageUrls))
+                        {
+                            var first = p.ImageUrls.Split(',').FirstOrDefault();
+                            if (!string.IsNullOrEmpty(first))
+                            {
+                                <div class="mt-2"><img src="@first" style="height:64px" class="img-thumbnail" /></div>
+                            }
+                        }
+                    </div>
+                    <div>
+                        <a class="btn btn-sm btn-secondary me-2" href="/admin/edit-product/@p.Id">Edit</a>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteProduct(p.Id)">Delete</button>
+                    </div>
+                </div>
+
+                <table class="table table-sm mt-3">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Size</th>
+                            <th>Color</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var v in p.Variants)
+                        {
+                            <tr>
+                                <td>@v.Sku</td>
+                                <td>@v.Size</td>
+                                <td>@v.Color</td>
+                                <td>₦@v.Price.ToString("N2")</td>
+                                <td>@v.Stock</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<Product>? products;
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await DbContext.Products
+            .Include(p => p.Variants)
+            .OrderBy(p => p.Name)
+            .ToListAsync();
+    }
+
+    private async Task DeleteProduct(int id)
+    {
+        var ok = await Js.InvokeAsync<bool>("confirm", $"Delete product #{id}? This cannot be undone.");
+        if (!ok) return;
+
+        var prod = await DbContext.Products.Include(p => p.Variants).FirstOrDefaultAsync(p => p.Id == id);
+        if (prod == null) return;
+
+        // Remove variants first
+        DbContext.ProductVariants.RemoveRange(prod.Variants);
+        DbContext.Products.Remove(prod);
+        await DbContext.SaveChangesAsync();
+
+        products = await DbContext.Products.Include(p => p.Variants).OrderBy(p => p.Name).ToListAsync();
+        StateHasChanged();
+    }
+}

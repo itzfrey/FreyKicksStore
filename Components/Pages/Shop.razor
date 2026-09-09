@@ -1,0 +1,133 @@
+@page "/shop"
+@rendermode InteractiveServer
+@using FreyKicksStore.Models
+@using Microsoft.EntityFrameworkCore
+@inject FreyKicksStore.Data.ApplicationDbContext DbContext
+@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.WebUtilities
+
+<PageTitle>Shop</PageTitle>
+
+<h2>Shop</h2>
+
+<div class="mb-3">
+    <div class="row">
+        <div class="col-md-6">
+            <label class="form-label">Category</label>
+            <select class="form-select" @onchange="OnCategoryChanged">
+                <option value="">All</option>
+                @foreach (var c in Categories)
+                {
+                    <option value="@c" selected="@(c == SelectedCategory)">@c</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Gender</label>
+            <select class="form-select" @onchange="OnGenderChanged">
+                <option value="">All</option>
+                @foreach (var g in Genders)
+                {
+                    <option value="@g" selected="@(g == SelectedGender)">@g</option>
+                }
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="row row-cols-1 row-cols-md-3 g-4">
+    @if (Products is null)
+    {
+        <p>Loading...</p>
+    }
+    else if (!Products.Any())
+    {
+        <p>No products found.</p>
+    }
+    else
+    {
+        @foreach (var p in Products)
+        {
+            var firstImage = !string.IsNullOrEmpty(p.ImageUrls) ? p.ImageUrls.Split(',').FirstOrDefault() : null;
+            var startingPrice = p.Variants.Select(v => v.Price).DefaultIfEmpty(0).Min();
+
+            <div class="col">
+                <a href="/product/@p.Id" class="text-decoration-none text-reset">
+                    <div class="card h-100">
+                        @if (!string.IsNullOrEmpty(firstImage))
+                        {
+                            <img src="@firstImage" class="card-img-top" alt="@p.Name" />
+                        }
+                        else
+                        {
+                            <div style="width:100%;height:200px;background:#eee;display:flex;align-items:center;justify-content:center;">
+                                <span class="text-muted">No image</span>
+                            </div>
+                        }
+                        <div class="card-body">
+                            <h5 class="card-title">@p.Name</h5>
+                            <p class="card-text">₦@startingPrice.ToString("N2")</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<Product>? Products;
+    private List<string> Categories = new();
+    private List<string> Genders = new();
+    private string? SelectedCategory;
+    private string? SelectedGender;
+
+    protected override void OnInitialized()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("category", out var cat))
+        {
+            SelectedCategory = cat.ToString();
+        }
+        if (query.TryGetValue("gender", out var g))
+        {
+            SelectedGender = g.ToString();
+        }
+
+        LoadProducts();
+    }
+
+    private void LoadProducts()
+    {
+        var query = DbContext.Products.AsQueryable().Include(p => p.Variants).AsQueryable();
+
+        if (!string.IsNullOrEmpty(SelectedCategory) &&
+            Enum.TryParse<ProductCategory>(SelectedCategory, true, out var categoryEnum))
+        {
+            query = query.Where(p => p.Category == categoryEnum);
+        }
+
+        if (!string.IsNullOrEmpty(SelectedGender) &&
+            Enum.TryParse<Gender>(SelectedGender, true, out var genderEnum))
+        {
+            query = query.Where(p => p.Gender == genderEnum);
+        }
+
+        Products = query.OrderBy(p => p.Name).ToList();
+        Categories = Enum.GetNames(typeof(ProductCategory)).OrderBy(c => c).ToList();
+        Genders = Enum.GetNames(typeof(Gender)).OrderBy(g => g).ToList();
+    }
+
+    private void OnCategoryChanged(ChangeEventArgs e)
+    {
+        SelectedCategory = e?.Value?.ToString();
+        LoadProducts();
+    }
+
+    private void OnGenderChanged(ChangeEventArgs e)
+    {
+        SelectedGender = e?.Value?.ToString();
+        LoadProducts();
+    }
+}

@@ -1,0 +1,199 @@
+@page "/product/{Id:int}"
+@rendermode InteractiveServer
+@using FreyKicksStore.Models
+@using Microsoft.EntityFrameworkCore
+@inject FreyKicksStore.Data.ApplicationDbContext DbContext
+@inject FreyKicksStore.Services.CartService CartService
+@inject NavigationManager NavigationManager
+@inject Microsoft.JSInterop.IJSRuntime JS
+
+<PageTitle>@(Product?.Name ?? "Product")</PageTitle>
+
+@if (Product == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <nav class="mb-3">
+        <small>
+            <a href="/">Home</a> /
+            <a href="/shop?gender=@Product.Gender">@Product.Gender</a> /
+            <a href="/shop?gender=@Product.Gender&category=@Product.Category">@Product.Category</a> /
+            @Product.Name
+        </small>
+    </nav>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="row">
+                <div class="col-2">
+                    @foreach (var img in ImageList)
+                    {
+                        <div class="mb-2">
+                            <img src="@img" class="img-thumbnail" style="cursor:pointer; @(img == MainImage ? "border-color:#000;" : "")"
+                                 @onclick="() => MainImage = img" />
+                        </div>
+                    }
+                </div>
+                <div class="col-10">
+                    @if (!string.IsNullOrEmpty(MainImage))
+                    {
+                        <img src="@MainImage" class="img-fluid" alt="@Product.Name" />
+                    }
+                    else
+                    {
+                        <div style="width:100%;height:300px;background:#eee;display:flex;align-items:center;justify-content:center;">
+                            <span class="text-muted">No image</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <h2>@Product.Name</h2>
+            <h4 class="mb-3">
+                @if (SelectedVariant != null)
+                {
+                    <text>₦@SelectedVariant.Price.ToString("N2")</text>
+                }
+                else
+                {
+                    <text>₦@Product.Variants.Select(v => v.Price).DefaultIfEmpty(0).Min().ToString("N2")</text>
+                }
+            </h4>
+
+            <p>@Product.Description</p>
+
+            @if (Colors.Any())
+            {
+                <div class="mb-3">
+                    <label class="form-label d-block"><strong>Color:</strong> @SelectedColor</label>
+                    @foreach (var color in Colors)
+                    {
+                        <button class="btn btn-sm @(color == SelectedColor ? "btn-dark" : "btn-outline-secondary") me-2"
+                                @onclick="() => SelectColor(color)">
+                            @color
+                        </button>
+                    }
+                </div>
+            }
+
+            <div class="mb-3">
+                <label class="form-label d-block"><strong>Size</strong></label>
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var v in VariantsForSelectedColor)
+                    {
+                        <button class="btn @(v.Id == SelectedVariant?.Id ? "btn-dark" : "btn-outline-secondary")"
+                                style="width:50px;"
+                                @onclick="() => SelectedVariant = v">
+                            @v.Size
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="mb-3 d-flex align-items-center">
+                <label class="form-label me-3 mb-0"><strong>Qty</strong></label>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="() => Quantity = Math.Max(1, Quantity - 1)">-</button>
+                <span class="mx-3">@Quantity</span>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="() => Quantity++">+</button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Message))
+            {
+                <div class="alert alert-info">@Message</div>
+            }
+
+            <div class="d-grid gap-2">
+                <button class="btn btn-dark btn-lg" @onclick="AddToCart">Add to Cart</button>
+                <button class="btn btn-outline-dark btn-lg" @onclick="BuyNow">Buy It Now</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Product? Product;
+    private List<string> ImageList = new();
+    private string? MainImage;
+    private List<string> Colors = new();
+    private string? SelectedColor;
+    private ProductVariant? SelectedVariant;
+    private int Quantity = 1;
+    private string? Message;
+
+    private IEnumerable<ProductVariant> VariantsForSelectedColor =>
+        Product?.Variants.Where(v => v.Color == SelectedColor).OrderBy(v => v.Size) ?? Enumerable.Empty<ProductVariant>();
+
+    protected override void OnInitialized()
+    {
+        LoadProduct();
+    }
+
+    private void LoadProduct()
+    {
+        Product = DbContext.Products.Include(p => p.Variants).SingleOrDefault(p => p.Id == Id);
+        if (Product == null) return;
+
+        ImageList = !string.IsNullOrEmpty(Product.ImageUrls)
+            ? Product.ImageUrls.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
+            : new List<string>();
+        MainImage = ImageList.FirstOrDefault();
+
+        Colors = Product.Variants.Select(v => v.Color).Where(c => !string.IsNullOrEmpty(c)).Distinct().ToList()!;        SelectedColor = Colors.FirstOrDefault();
+        SelectedVariant = Product.Variants.Where(v => v.Color == SelectedColor).OrderBy(v => v.Size).FirstOrDefault();
+    }
+
+    private void SelectColor(string color)
+    {
+        SelectedColor = color;
+        SelectedVariant = Product?.Variants.Where(v => v.Color == color).OrderBy(v => v.Size).FirstOrDefault();
+    }
+
+    private bool AddCurrentToCart()
+    {
+        if (SelectedVariant == null || Product == null)
+        {
+            Message = "Please select a size.";
+            return false;
+        }
+
+        CartService.AddToCart(new CartItem
+        {
+            ProductVariantId = SelectedVariant.Id,
+            Sku = SelectedVariant.Sku,
+            ProductName = Product.Name,
+            Price = SelectedVariant.Price,
+            Quantity = Quantity
+        });
+
+        return true;
+    }
+
+    private async Task AddToCart()
+    {
+        if (!AddCurrentToCart()) return;
+
+        try
+        {
+            var items = CartService.GetItems().Select(i => new { i.ProductVariantId, i.Sku, i.ProductName, i.Price, i.Quantity }).ToList();
+            var json = System.Text.Json.JsonSerializer.Serialize(items);
+            var encoded = System.Net.WebUtility.UrlEncode(json);
+            await JS.InvokeVoidAsync("eval", $"document.cookie = 'guest_cart={encoded}; path=/; max-age=604800';");
+        }
+        catch { }
+
+        NavigationManager.NavigateTo($"/cart?added={SelectedVariant?.Sku}");
+    }
+
+    private void BuyNow()
+    {
+        if (!AddCurrentToCart()) return;
+        NavigationManager.NavigateTo("/checkout");
+    }
+}

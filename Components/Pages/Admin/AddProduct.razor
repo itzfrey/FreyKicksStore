@@ -1,0 +1,179 @@
+@page "/admin/add-product"
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using FreyKicksStore.Models
+@using Microsoft.AspNetCore.Components.Forms
+@inject FreyKicksStore.Data.ApplicationDbContext DbContext
+@inject NavigationManager NavigationManager
+@inject IWebHostEnvironment Env
+
+<PageTitle>Add Product</PageTitle>
+
+<h3>Add Product</h3>
+
+<EditForm Model="productModel" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+
+    <div class="mb-3">
+        <label class="form-label">Product Images</label>
+        <InputFile OnChange="HandleSelectedFiles" multiple />
+        @if (uploadedImages.Any())
+        {
+            <div class="mt-2">
+                @foreach (var img in uploadedImages)
+                {
+                    <img src="@img" class="img-thumbnail me-2" style="height:80px" />
+                }
+            </div>
+        }
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Name</label>
+        <InputText class="form-control" @bind-Value="productModel.Name" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Description</label>
+        <InputTextArea class="form-control" @bind-Value="productModel.Description" />
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Category</label>
+            <select class="form-select" @bind="productModel.Category">
+                @foreach (var c in Enum.GetValues(typeof(ProductCategory)).Cast<ProductCategory>())
+                {
+                    <option value="@c">@c</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Gender</label>
+            <select class="form-select" @bind="productModel.Gender">
+                @foreach (var g in Enum.GetValues(typeof(Gender)).Cast<Gender>())
+                {
+                    <option value="@g">@g</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Base Price</label>
+            <InputNumber class="form-control" @bind-Value="productModel.BasePrice" />
+        </div>
+    </div>
+
+    <h5>Initial Variant</h5>
+    <div class="row">
+        <div class="col-md-3 mb-3">
+            <label class="form-label">SKU</label>
+            <InputText class="form-control" @bind-Value="variantModel.Sku" />
+        </div>
+        <div class="col-md-3 mb-3">
+            <label class="form-label">Size</label>
+            <select class="form-select" @bind="variantModel.Size">
+                @foreach (var s in sizes)
+                {
+                    <option value="@s">@s</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3 mb-3">
+            <label class="form-label">Color</label>
+            <InputText class="form-control" @bind-Value="variantModel.Color" />
+        </div>
+        <div class="col-md-3 mb-3">
+            <label class="form-label">Stock Quantity</label>
+            <InputNumber class="form-control" @bind-Value="variantModel.Stock" />
+        </div>
+    </div>
+
+    <button class="btn btn-primary" type="submit">Create Product</button>
+    <a class="btn btn-secondary ms-2" href="/admin/inventory">Cancel</a>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(Message))
+{
+    <div class="alert alert-info mt-3">@Message</div>
+}
+
+@code {
+    private ProductInput productModel = new ProductInput();
+    private VariantInput variantModel = new VariantInput();
+    private string? Message;
+    private List<string> uploadedImages = new();
+    private readonly string[] allowedContentTypes = new[] { "image/jpeg", "image/png", "image/webp" };
+    private const long MaxFileSize = 5 * 1024 * 1024; // 5MB
+    private static readonly IEnumerable<string> sizes = Enumerable.Range(37, 12).Select(i => i.ToString());
+
+    private async Task HandleValidSubmit()
+    {
+        // Create Product and initial variant
+        var product = new Product
+        {
+            Name = productModel.Name,
+            Description = productModel.Description,
+            Category = productModel.Category,
+            Gender = productModel.Gender,
+            ImageUrl = productModel.ImageUrl,
+            ImageUrls = uploadedImages.Any() ? string.Join(',', uploadedImages) : null
+        };
+
+        var variant = new ProductVariant
+        {
+            Sku = variantModel.Sku ?? string.Empty,
+            Size = variantModel.Size,
+            Color = variantModel.Color,
+            Price = productModel.BasePrice,
+            Stock = variantModel.Stock
+        };
+
+        product.Variants.Add(variant);
+
+        DbContext.Products.Add(product);
+        await DbContext.SaveChangesAsync();
+
+        NavigationManager.NavigateTo("/admin/inventory");
+    }
+
+    private async Task HandleSelectedFiles(InputFileChangeEventArgs e)
+    {
+        foreach (var file in e.GetMultipleFiles())
+        {
+            if (!allowedContentTypes.Contains(file.ContentType)) continue;
+            if (file.Size > MaxFileSize) continue;
+
+            var uploads = Path.Combine(Env.WebRootPath, "images", "products");
+            if (!Directory.Exists(uploads)) Directory.CreateDirectory(uploads);
+
+            var ext = Path.GetExtension(file.Name);
+            var fileName = $"{Guid.NewGuid()}{ext}";
+            var savePath = Path.Combine(uploads, fileName);
+
+            await using var stream = file.OpenReadStream(MaxFileSize);
+            await using var fs = File.Create(savePath);
+            await stream.CopyToAsync(fs);
+
+            var relative = $"/images/products/{fileName}";
+            uploadedImages.Add(relative);
+        }
+    }
+
+    public class ProductInput
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public ProductCategory Category { get; set; } = ProductCategory.General;
+        public Gender Gender { get; set; } = Gender.Unisex;
+        public decimal BasePrice { get; set; }
+        public string? ImageUrl { get; set; }
+    }
+
+    public class VariantInput
+    {
+        public string? Sku { get; set; }
+        public string? Size { get; set; }
+        public string? Color { get; set; }
+        public int Stock { get; set; } = 0;
+    }
+}

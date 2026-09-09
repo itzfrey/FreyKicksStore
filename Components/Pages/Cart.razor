@@ -1,0 +1,90 @@
+@page "/cart"
+@rendermode InteractiveServer
+@using FreyKicksStore.Models
+@inject FreyKicksStore.Services.CartService CartService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Cart</PageTitle>
+
+@if (!string.IsNullOrEmpty(AddedSku))
+{
+    <div class="alert alert-success">Added <strong>@AddedSku</strong> to cart.</div>
+}
+
+<h3>Your Cart</h3>
+
+@if (Items is null || !Items.Any())
+{
+    <p>Your cart is empty.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>SKU</th>
+                <th>Price</th>
+                <th>Qty</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var it in Items)
+            {
+                <tr>
+                    <td>@it.ProductName</td>
+                    <td>@it.Sku</td>
+                    <td>₦@it.Price.ToString("N2")</td>
+                    <td>
+                        <input type="number" value="@it.Quantity" min="1" @onchange="@(e => UpdateQuantity(it.Id, int.Parse(((ChangeEventArgs)e).Value?.ToString() ?? "1")))" />
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" @onclick="() => Remove(it.Id)">Remove</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <p><strong>Total:</strong> ₦@Items.Sum(i => i.Price * i.Quantity).ToString("N2")</p>
+    <a class="btn btn-primary" href="/checkout">Proceed to Checkout</a>
+}
+
+@code {
+    private List<CartItem> Items = new();
+    private string? AddedSku;
+
+    protected override void OnInitialized()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        AddedSku = query.Get("added");
+
+        Load();
+    }
+
+    private void Load()
+    {
+        Items = CartService.GetItems().Select(i => new CartItem
+        {
+            Id = i.Id,
+            ProductName = i.ProductName,
+            Sku = i.Sku,
+            Price = i.Price,
+            Quantity = i.Quantity
+        }).ToList();
+    }
+
+    private void Remove(int id)
+    {
+        CartService.RemoveFromCart(id);
+        Load();
+    }
+
+    private void UpdateQuantity(int id, int qty)
+    {
+        CartService.UpdateQuantity(id, qty);
+        Load();
+    }
+}

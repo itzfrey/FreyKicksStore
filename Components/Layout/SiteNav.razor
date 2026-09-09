@@ -1,0 +1,152 @@
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+        <button class="btn btn-outline-secondary d-lg-none me-2" type="button" @onclick="ToggleMobileMenu">
+            ☰
+        </button>
+
+        <a class="navbar-brand me-3" href="/">Frey Kicks</a>
+
+        <div class="d-none d-lg-flex align-items-center position-relative">
+            <ul class="navbar-nav me-3">
+                <li class="nav-item position-relative">
+                    <a class="nav-link" href="#" @onclick="ToggleMenDesktop" @onclick:preventDefault>Men ▾</a>
+                    @if (menDesktopOpen)
+                    {
+                        <ul class="dropdown-menu show" style="position:absolute; top:100%; left:0;">
+                            <li><a class="dropdown-item" href="/shop?gender=Men&category=Sneakers">Sneakers</a></li>
+                            <li><a class="dropdown-item" href="/shop?gender=Men&category=Canvas">Canvas</a></li>
+                            <li><a class="dropdown-item" href="/shop?gender=Men&category=Corporate">Corporate</a></li>
+                            <li><a class="dropdown-item" href="/shop?gender=Men&category=Slides">Slides</a></li>
+                        </ul>
+                    }
+                </li>
+                <li class="nav-item position-relative">
+                    <a class="nav-link" href="#" @onclick="ToggleWomenDesktop" @onclick:preventDefault>Women ▾</a>
+                    @if (womenDesktopOpen)
+                    {
+                        <ul class="dropdown-menu show" style="position:absolute; top:100%; left:0;">
+                            <li><a class="dropdown-item" href="/shop?gender=Women&category=Sneakers">Sneakers</a></li>
+                            <li><a class="dropdown-item" href="/shop?gender=Women&category=Canvas">Canvas</a></li>
+                            <li><a class="dropdown-item" href="/shop?gender=Women&category=Loafers">Loafers</a></li>
+                            <li><a class="dropdown-item" href="/shop?gender=Women&category=Slides">Slides</a></li>
+                        </ul>
+                    }
+                </li>
+                <li class="nav-item"><a class="nav-link" href="/contact">Contact Us</a></li>
+            </ul>
+        </div>
+
+        <div class="d-flex align-items-center ms-auto">
+            <AuthorizeView>
+                <Authorized>
+                    <form method="post" action="/account/logout" class="m-0 me-2">
+                        <AntiforgeryToken />
+                        <button type="submit" class="btn btn-link p-0">Account</button>
+                    </form>
+                </Authorized>
+                <NotAuthorized>
+                    <a class="btn btn-link p-0 me-2" href="/account/login-ui">Account</a>
+                </NotAuthorized>
+            </AuthorizeView>
+
+            <a class="btn btn-link p-0 me-2" href="/search"><span class="bi bi-search">🔍</span></a>
+            <a class="btn btn-link p-0" href="/cart"><span class="bi bi-cart">🛒</span></a>
+        </div>
+    </div>
+</nav>
+
+@if (mobileMenuOpen)
+{
+    <div class="d-lg-none" style="position:fixed; inset:0; background:#fff; z-index:1050; overflow-y:auto;">
+        <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+            @if (mobileLevel != MobileLevel.Top)
+            {
+                <button class="btn btn-link p-0" @onclick="BackToTop">&larr; @(mobileLevel == MobileLevel.Men ? "Men" : "Women")</button>
+            }
+            else
+            {
+                <span class="fw-bold">Menu</span>
+            }
+            <button class="btn-close" @onclick="ToggleMobileMenu" aria-label="Close"></button>
+        </div>
+
+        @if (mobileLevel == MobileLevel.Top)
+        {
+            <ul class="list-unstyled p-3">
+                <li><a class="d-block py-2" href="/" @onclick="ToggleMobileMenu">Home</a></li>
+                <li class="d-flex justify-content-between align-items-center py-2 border-bottom" @onclick="() => GoToMobileLevel(MobileLevel.Men)" style="cursor:pointer;">
+                    <span>Men</span><span>&rarr;</span>
+                </li>
+                <li class="d-flex justify-content-between align-items-center py-2 border-bottom" @onclick="() => GoToMobileLevel(MobileLevel.Women)" style="cursor:pointer;">
+                    <span>Women</span><span>&rarr;</span>
+                </li>
+                <li><a class="d-block py-2" href="/contact" @onclick="ToggleMobileMenu">Contact Us</a></li>
+                <li class="mt-2">
+                    <AuthorizeView>
+                        <Authorized>
+                            <form method="post" action="/account/logout" class="m-0">
+                                <AntiforgeryToken />
+                                <button type="submit" class="btn btn-link p-0">Account</button>
+                            </form>
+                        </Authorized>
+                        <NotAuthorized>
+                            <a class="d-block py-2" href="/account/login-ui" @onclick="ToggleMobileMenu">Login</a>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </li>
+            </ul>
+        }
+        else if (mobileLevel == MobileLevel.Men)
+        {
+            <ul class="list-unstyled p-3">
+                <li><a class="d-block py-2" href="/shop?gender=Men&category=Sneakers" @onclick="ToggleMobileMenu">Sneakers</a></li>
+                <li><a class="d-block py-2" href="/shop?gender=Men&category=Canvas" @onclick="ToggleMobileMenu">Canvas</a></li>
+                <li><a class="d-block py-2" href="/shop?gender=Men&category=Corporate" @onclick="ToggleMobileMenu">Corporate</a></li>
+                <li><a class="d-block py-2" href="/shop?gender=Men&category=Slides" @onclick="ToggleMobileMenu">Slides</a></li>
+            </ul>
+        }
+        else if (mobileLevel == MobileLevel.Women)
+        {
+            <ul class="list-unstyled p-3">
+                <li><a class="d-block py-2" href="/shop?gender=Women&category=Sneakers" @onclick="ToggleMobileMenu">Sneakers</a></li>
+                <li><a class="d-block py-2" href="/shop?gender=Women&category=Canvas" @onclick="ToggleMobileMenu">Canvas</a></li>
+                <li><a class="d-block py-2" href="/shop?gender=Women&category=Loafers" @onclick="ToggleMobileMenu">Loafers</a></li>
+                <li><a class="d-block py-2" href="/shop?gender=Women&category=Slides" @onclick="ToggleMobileMenu">Slides</a></li>
+            </ul>
+        }
+    </div>
+}
+
+@code {
+    private enum MobileLevel { Top, Men, Women }
+
+    private bool mobileMenuOpen;
+    private MobileLevel mobileLevel = MobileLevel.Top;
+    private bool menDesktopOpen;
+    private bool womenDesktopOpen;
+
+    private void ToggleMobileMenu()
+    {
+        mobileMenuOpen = !mobileMenuOpen;
+        if (!mobileMenuOpen) mobileLevel = MobileLevel.Top;
+    }
+
+    private void GoToMobileLevel(MobileLevel level) => mobileLevel = level;
+    private void BackToTop() => mobileLevel = MobileLevel.Top;
+
+    private void ToggleMenDesktop()
+    {
+        menDesktopOpen = !menDesktopOpen;
+        womenDesktopOpen = false;
+    }
+
+    private void ToggleWomenDesktop()
+    {
+        womenDesktopOpen = !womenDesktopOpen;
+        menDesktopOpen = false;
+    }
+}

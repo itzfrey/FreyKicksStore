@@ -1,0 +1,81 @@
+@page "/checkout"
+@rendermode InteractiveServer
+@using FreyKicksStore.Models
+@inject FreyKicksStore.Services.CartService CartService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Checkout</PageTitle>
+
+<h3>Checkout (placeholder)</h3>
+
+<p>This is a lightweight checkout placeholder. Implement full order/payment flow later.</p>
+
+@if (Items is null || !Items.Any())
+{
+    <p>Your cart is empty.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>SKU</th>
+                <th>Price</th>
+                <th>Qty</th>
+                <th>Line</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var it in Items)
+            {
+                <tr>
+                    <td>@it.ProductName</td>
+                    <td>@it.Sku</td>
+                    <td>@it.Price:C</td>
+                    <td>@it.Quantity</td>
+                    <td>@(it.Price * it.Quantity):C</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <p><strong>Total:</strong> @Items.Sum(i => i.Price * i.Quantity):C</p>
+
+    <button class="btn btn-primary" @onclick="PlaceOrder">Place order (placeholder)</button>
+}
+
+@if (!string.IsNullOrEmpty(Message))
+{
+    <div class="alert alert-success mt-3">@Message</div>
+}
+
+@code {
+    private List<CartItem> Items = new();
+    private string? Message;
+
+    protected override void OnInitialized()
+    {
+        Load();
+    }
+
+    private void Load()
+    {
+        Items = CartService.GetItems().Select(i => new CartItem
+        {
+            Id = i.Id,
+            ProductName = i.ProductName,
+            Sku = i.Sku,
+            Price = i.Price,
+            Quantity = i.Quantity
+        }).ToList();
+    }
+
+    private void PlaceOrder()
+    {
+        // Placeholder: simply clear the cart and show a success message
+        CartService.Clear();
+        Message = "Order placed (placeholder). Cart cleared.";
+        Load();
+    }
+}
