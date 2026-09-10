@@ -1,35 +1,109 @@
 ﻿@page "/"
+@using FreyKicksStore.Models
+@using Microsoft.EntityFrameworkCore
+@using FreyKicksStore.Components.Shared
+@inject FreyKicksStore.Data.ApplicationDbContext DbContext
 
 <PageTitle>Frey Kicks</PageTitle>
 
-<div class="p-5 mb-4 bg-light rounded-3 text-center">
-    <h1 class="display-5 fw-bold">Frey Kicks</h1>
-    <p class="fs-4">Sneakers, corporate shoes, and slides — for everyone.</p>
-</div>
+<section class="hero">
+    <img src="/images/products/freykicks_hero.webp" alt="Featured sneakers" class="hero-bg" />
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+        <h1 class="site-logo hero-title">Frey Kicks</h1>
+        <p class="hero-subtitle">Sneakers, corporate shoes, and slides — for everyone.</p>
+        <a href="/shop" class="btn hero-cta">Shop Now</a>
+    </div>
+</section>
 
-<div class="row g-4">
-    <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <h5 class="card-title">Sneakers</h5>
-                <a class="btn btn-outline-dark mt-2" href="/shop?category=Sneakers">Shop Sneakers</a>
-            </div>
+@if (Bestsellers.Any())
+{
+    <section class="mb-5">
+        <h3 class="mb-3">Bestsellers</h3>
+        <div class="row row-cols-2 row-cols-md-4 g-3">
+            @foreach (var p in Bestsellers)
+            {
+                <div class="col"><ProductCard Product="p" /></div>
+            }
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <h5 class="card-title">Corporate</h5>
-                <a class="btn btn-outline-dark mt-2" href="/shop?category=Corporate">Shop Corporate</a>
-            </div>
+    </section>
+}
+
+@if (LatestArrivals.Any())
+{
+    <section class="mb-5">
+        <h3 class="mb-3">Latest Arrivals</h3>
+        <div class="row row-cols-2 row-cols-md-4 g-3">
+            @foreach (var p in LatestArrivals)
+            {
+                <div class="col"><ProductCard Product="p" /></div>
+            }
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <h5 class="card-title">Slides</h5>
-                <a class="btn btn-outline-dark mt-2" href="/shop?category=Slides">Shop Slides</a>
-            </div>
+    </section>
+}
+
+@if (Slides.Any())
+{
+    <section class="mb-5">
+        <h3 class="mb-3">Slides</h3>
+        <div class="row row-cols-2 row-cols-md-4 g-3">
+            @foreach (var p in Slides)
+            {
+                <div class="col"><ProductCard Product="p" /></div>
+            }
         </div>
+    </section>
+}
+
+@if (RandomSneakers.Any())
+{
+    <section class="mb-5">
+        <h3 class="mb-3">Sneakers You Might Like</h3>
+        <div class="row row-cols-2 row-cols-md-4 g-3">
+            @foreach (var p in RandomSneakers)
+            {
+                <div class="col"><ProductCard Product="p" /></div>
+            }
+        </div>
+    </section>
+}
+
+<footer class="border-top pt-4 pb-5 mt-5 text-center text-muted">
+    <div class="mb-2 fw-bold text-dark">Frey Kicks</div>
+    <div class="mb-2">
+        <a href="/shop" class="text-muted me-3">Shop</a>
+        <a href="/contact" class="text-muted me-3">Contact Us</a>
+        <a href="/cart" class="text-muted">Cart</a>
     </div>
-</div>
+    <small>&copy; @DateTime.Now.Year Frey Kicks. All rights reserved.</small>
+</footer>
+
+@code {
+    private List<Product> Bestsellers = new();
+    private List<Product> LatestArrivals = new();
+    private List<Product> Slides = new();
+    private List<Product> RandomSneakers = new();
+
+    protected override void OnInitialized()
+    {
+        var allActive = DbContext.Products.Include(p => p.Variants);
+
+        // NOTE: no real sales/order data exists yet (checkout doesn't persist orders —
+        // see ARCHITECTURE.md's mock-checkout plan and SCHEMA.md's still-unbuilt Order
+        // model). Until that exists, "Bestsellers" is a placeholder — just the most
+        // recently added products. Swap this for a real sales-based query once Order
+        // tracking is built.
+        Bestsellers = allActive.OrderByDescending(p => p.Id).Take(4).ToList();
+
+        LatestArrivals = allActive.OrderByDescending(p => p.Id).Skip(4).Take(4).ToList();
+
+        Slides = allActive.Where(p => p.Category == ProductCategory.Slides).Take(4).ToList();
+
+        // Randomize client-side since SQLite doesn't have a clean EF-translatable random order.
+        RandomSneakers = allActive.Where(p => p.Category == ProductCategory.Sneakers)
+            .ToList()
+            .OrderBy(_ => Guid.NewGuid())
+            .Take(4)
+            .ToList();
+    }
+}

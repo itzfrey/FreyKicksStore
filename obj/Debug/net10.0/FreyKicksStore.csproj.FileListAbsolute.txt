@@ -120,7 +120,6 @@ C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\scopedcss\
 C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\scopedcss\Components\Layout\ReconnectModal.razor.rz.scp.css
 C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\scopedcss\bundle\FreyKicksStore.styles.css
 C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\scopedcss\projectbundle\FreyKicksStore.bundle.scp.css
-C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\compressed\sooytki7dg-{0}-khy4lop6wu-khy4lop6wu.gz
 C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\compressed\13a4an068k-{0}-bqjiyaj88i-bqjiyaj88i.gz
 C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\compressed\rvdndt1dl7-{0}-c2jlpeoesf-c2jlpeoesf.gz
 C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\compressed\ltzrllsn0g-{0}-erw9l3u2r3-erw9l3u2r3.gz
@@ -182,3 +181,6 @@ C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\FreyKicksS
 C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\FreyKicksStore.genruntimeconfig.cache
 C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\ref\FreyKicksStore.dll
 C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\bin\Debug\net10.0\Microsoft.AspNetCore.Authentication.Google.dll
+C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\FreyKicksStore.sourcelink.json
+C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\compressed\caorgzn1lg-{0}-eqtnrt4i6m-eqtnrt4i6m.gz
+C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\compressed\sooytki7dg-{0}-rmdsq8vefb-rmdsq8vefb.gz

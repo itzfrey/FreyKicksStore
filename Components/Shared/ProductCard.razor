@@ -1,0 +1,31 @@
+@using FreyKicksStore.Models
+
+<a href="/product/@Product.Id" class="text-decoration-none text-reset">
+    <div class="card h-100">
+        @if (!string.IsNullOrEmpty(FirstImage))
+        {
+            <img src="@FirstImage" class="card-img-top" alt="@Product.Name" style="height:220px;object-fit:cover;" />
+        }
+        else
+        {
+            <div style="width:100%;height:220px;background:#eee;display:flex;align-items:center;justify-content:center;">
+                <span class="text-muted">No image</span>
+            </div>
+        }
+        <div class="card-body">
+            <h6 class="card-title mb-1">@Product.Name</h6>
+            <p class="card-text mb-0">₦@StartingPrice.ToString("N2")</p>
+        </div>
+    </div>
+</a>
+
+@code {
+    [Parameter, EditorRequired]
+    public Product Product { get; set; } = null!;
+
+    private string? FirstImage =>
+        !string.IsNullOrEmpty(Product.ImageUrls) ? Product.ImageUrls.Split(',').FirstOrDefault() : null;
+
+    private decimal StartingPrice =>
+        Product.Variants.Select(v => v.Price).DefaultIfEmpty(0).Min();
+}
