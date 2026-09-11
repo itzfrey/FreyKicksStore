@@ -3,6 +3,7 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 @using FreyKicksStore.Models
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
 @inject FreyKicksStore.Data.ApplicationDbContext DbContext
 @inject NavigationManager NavigationManager
 @inject IWebHostEnvironment Env
@@ -58,57 +59,210 @@
             </select>
         </div>
         <div class="col-md-4 mb-3">
-            <label class="form-label">Base Price</label>
+            <label class="form-label">Base Price (used as default for generated variants)</label>
             <InputNumber class="form-control" @bind-Value="productModel.BasePrice" />
         </div>
     </div>
 
-    <h5>Initial Variant</h5>
+    <hr />
+    <h5>Generate Variants</h5>
+    <p class="text-muted small">Pick colors and sizes below, then click Generate — every color/size combination will be created automatically with an auto-filled SKU you can still edit.</p>
+
     <div class="row">
-        <div class="col-md-3 mb-3">
-            <label class="form-label">SKU</label>
-            <InputText class="form-control" @bind-Value="variantModel.Sku" />
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Colors (comma-separated)</label>
+            <input class="form-control" @bind="colorsInput" placeholder="e.g. Black, White, Red" />
         </div>
-        <div class="col-md-3 mb-3">
-            <label class="form-label">Size</label>
-            <select class="form-select" @bind="variantModel.Size">
-                @foreach (var s in sizes)
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Sizes</label>
+            <div class="d-flex flex-wrap gap-2">
+                @foreach (var s in AllSizes)
                 {
-                    <option value="@s">@s</option>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="form-check-input" type="checkbox" id="size-@s"
+                               checked="@selectedSizes.Contains(s)"
+                               @onchange="e => ToggleSize(s, (bool)e.Value!)" />
+                        <label class="form-check-label" for="size-@s">@s</label>
+                    </div>
                 }
-            </select>
-        </div>
-        <div class="col-md-3 mb-3">
-            <label class="form-label">Color</label>
-            <InputText class="form-control" @bind-Value="variantModel.Color" />
-        </div>
-        <div class="col-md-3 mb-3">
-            <label class="form-label">Stock Quantity</label>
-            <InputNumber class="form-control" @bind-Value="variantModel.Stock" />
+            </div>
         </div>
     </div>
+
+    <button type="button" class="btn btn-outline-secondary mb-3" @onclick="GenerateVariants">Generate Variants</button>
+
+    @if (variantRows.Any())
+    {
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>SKU</th>
+                    <th>Size</th>
+                    <th>Color</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var v in variantRows)
+                {
+                    <tr>
+                        <td><input class="form-control form-control-sm" @bind="v.Sku" /></td>
+                        <td><input class="form-control form-control-sm" @bind="v.Size" /></td>
+                        <td><input class="form-control form-control-sm" @bind="v.Color" /></td>
+                        <td><input type="number" class="form-control form-control-sm" @bind="v.Price" /></td>
+                        <td><input type="number" class="form-control form-control-sm" @bind="v.Stock" /></td>
+                        <td><button class="btn btn-sm btn-danger" type="button" @onclick="() => variantRows.Remove(v)">Remove</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <div class="alert alert-info mt-3">@Message</div>
+    }
 
     <button class="btn btn-primary" type="submit">Create Product</button>
     <a class="btn btn-secondary ms-2" href="/admin/inventory">Cancel</a>
 </EditForm>
 
-@if (!string.IsNullOrEmpty(Message))
-{
-    <div class="alert alert-info mt-3">@Message</div>
-}
-
 @code {
     private ProductInput productModel = new ProductInput();
-    private VariantInput variantModel = new VariantInput();
     private string? Message;
     private List<string> uploadedImages = new();
     private readonly string[] allowedContentTypes = new[] { "image/jpeg", "image/png", "image/webp" };
     private const long MaxFileSize = 5 * 1024 * 1024; // 5MB
-    private static readonly IEnumerable<string> sizes = Enumerable.Range(37, 12).Select(i => i.ToString());
+    private static readonly List<string> AllSizes = Enumerable.Range(37, 12).Select(i => i.ToString()).ToList();
 
+    private string colorsInput = string.Empty;
+    private HashSet<string> selectedSizes = new();
+    private List<VariantRow> variantRows = new();
+
+    private void ToggleSize(string size, bool isChecked)
+    {
+        if (isChecked) selectedSizes.Add(size);
+        else selectedSizes.Remove(size);
+    }
+
+    private void GenerateVariants()
+    {
+        var colors = colorsInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct()
+            .ToList();
+
+        if (!colors.Any() || !selectedSizes.Any())
+        {
+            Message = "Pick at least one color and one size before generating.";
+            return;
+        }
+
+        Message = null;
+        variantRows.Clear();
+
+        foreach (var color in colors)
+        {
+            foreach (var size in selectedSizes.OrderBy(s => int.Parse(s)))
+            {
+                variantRows.Add(new VariantRow
+                {
+                    Sku = GenerateSku(productModel.Name, productModel.Category, size, color),
+                    Size = size,
+                    Color = color,
+                    Price = productModel.BasePrice,
+                    Stock = 0
+                });
+            }
+        }
+    }
+
+    private static string GenerateSku(string name, ProductCategory category, string size, string color)
+{
+    var catCode = category switch
+    {
+        ProductCategory.Sneakers => "SNK",
+        ProductCategory.Corporate => "COR",
+        ProductCategory.Slides => "SLD",
+        ProductCategory.Canvas => "CAN",
+        ProductCategory.Loafers => "LOA",
+        _ => "GEN"
+    };
+
+    var nameSlug = BuildAcronym(name, 3);
+
+    var colorCode = new string(color.Where(char.IsLetter).ToArray()).ToUpperInvariant();
+    colorCode = colorCode.Length >= 3 ? colorCode.Substring(0, 3) : colorCode.PadRight(3, 'X');
+
+    return $"FK-{catCode}-{nameSlug}-{size}-{colorCode}";
+}
+
+    private static string BuildAcronym(string name, int targetLength)
+    {
+       var words = (name ?? string.Empty)
+           .Split(new[] { ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries)
+           .Where(w => w.Any(char.IsLetter))
+           .ToList();
+    
+       var acronym = new string(words
+           .Select(w => w.First(char.IsLetter))
+           .ToArray())
+           .ToUpperInvariant();
+    
+       return acronym.Length >= targetLength
+           ? acronym.Substring(0, targetLength)
+           : acronym.PadRight(targetLength, 'X');
+    }
+    
     private async Task HandleValidSubmit()
     {
-        // Create Product and initial variant
+        Message = null;
+
+        if (!variantRows.Any())
+        {
+            Message = "Generate at least one variant before saving.";
+            return;
+        }
+
+        foreach (var v in variantRows)
+        {
+            if (string.IsNullOrWhiteSpace(v.Sku) || string.IsNullOrWhiteSpace(v.Size) || string.IsNullOrWhiteSpace(v.Color))
+            {
+                Message = "Every variant needs a SKU, size, and color.";
+                return;
+            }
+            if (v.Price <= 0)
+            {
+                Message = $"Variant {v.Sku} needs a price greater than 0.";
+                return;
+            }
+            if (v.Stock < 0)
+            {
+                Message = $"Variant {v.Sku} has an invalid stock value.";
+                return;
+            }
+        }
+
+        var skus = variantRows.Select(v => v.Sku).ToList();
+        var dupesInBatch = skus.GroupBy(s => s).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+        if (dupesInBatch.Any())
+        {
+            Message = $"Duplicate SKU(s) in this batch: {string.Join(", ", dupesInBatch)}. Edit them to be unique.";
+            return;
+        }
+
+        var existingConflicts = await DbContext.ProductVariants
+            .Where(pv => skus.Contains(pv.Sku))
+            .Select(pv => pv.Sku)
+            .ToListAsync();
+        if (existingConflicts.Any())
+        {
+            Message = $"These SKUs already exist elsewhere: {string.Join(", ", existingConflicts)}. Edit them to be unique.";
+            return;
+        }
+
         var product = new Product
         {
             Name = productModel.Name,
@@ -119,16 +273,17 @@
             ImageUrls = uploadedImages.Any() ? string.Join(',', uploadedImages) : null
         };
 
-        var variant = new ProductVariant
+        foreach (var v in variantRows)
         {
-            Sku = variantModel.Sku ?? string.Empty,
-            Size = variantModel.Size,
-            Color = variantModel.Color,
-            Price = productModel.BasePrice,
-            Stock = variantModel.Stock
-        };
-
-        product.Variants.Add(variant);
+            product.Variants.Add(new ProductVariant
+            {
+                Sku = v.Sku,
+                Size = v.Size,
+                Color = v.Color,
+                Price = v.Price,
+                Stock = v.Stock
+            });
+        }
 
         DbContext.Products.Add(product);
         await DbContext.SaveChangesAsync();
@@ -169,11 +324,12 @@
         public string? ImageUrl { get; set; }
     }
 
-    public class VariantInput
+    public class VariantRow
     {
-        public string? Sku { get; set; }
-        public string? Size { get; set; }
-        public string? Color { get; set; }
-        public int Stock { get; set; } = 0;
+        public string Sku { get; set; } = string.Empty;
+        public string Size { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public int Stock { get; set; }
     }
 }

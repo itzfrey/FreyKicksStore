@@ -9,6 +9,12 @@
 
 <PageTitle>@(Product?.Name ?? "Product")</PageTitle>
 
+@if (ShowToast)
+{
+    <div class="toast-notification">
+        ✓ Added to cart
+    </div>
+}
 @if (Product == null)
 {
     <p>Loading...</p>
@@ -175,10 +181,12 @@ else
         return true;
     }
 
+    private bool ShowToast = false;
+
     private async Task AddToCart()
     {
         if (!AddCurrentToCart()) return;
-
+    
         try
         {
             var items = CartService.GetItems().Select(i => new { i.ProductVariantId, i.Sku, i.ProductName, i.Price, i.Quantity }).ToList();
@@ -187,8 +195,12 @@ else
             await JS.InvokeVoidAsync("eval", $"document.cookie = 'guest_cart={encoded}; path=/; max-age=604800';");
         }
         catch { }
-
-        NavigationManager.NavigateTo($"/cart?added={SelectedVariant?.Sku}");
+    
+        ShowToast = true;
+        StateHasChanged();
+        await Task.Delay(2500);
+        ShowToast = false;
+        StateHasChanged();
     }
 
     private void BuyNow()

@@ -99,25 +99,37 @@
     }
 
     private void LoadProducts()
+{
+    var query = DbContext.Products.AsQueryable().Include(p => p.Variants).AsQueryable();
+
+    if (!string.IsNullOrEmpty(SelectedCategory) &&
+        Enum.TryParse<ProductCategory>(SelectedCategory, true, out var categoryEnum))
     {
-        var query = DbContext.Products.AsQueryable().Include(p => p.Variants).AsQueryable();
-
-        if (!string.IsNullOrEmpty(SelectedCategory) &&
-            Enum.TryParse<ProductCategory>(SelectedCategory, true, out var categoryEnum))
-        {
-            query = query.Where(p => p.Category == categoryEnum);
-        }
-
-        if (!string.IsNullOrEmpty(SelectedGender) &&
-            Enum.TryParse<Gender>(SelectedGender, true, out var genderEnum))
-        {
-            query = query.Where(p => p.Gender == genderEnum);
-        }
-
-        Products = query.OrderBy(p => p.Name).ToList();
-        Categories = Enum.GetNames(typeof(ProductCategory)).OrderBy(c => c).ToList();
-        Genders = Enum.GetNames(typeof(Gender)).OrderBy(g => g).ToList();
+        query = query.Where(p => p.Category == categoryEnum);
     }
+
+    if (!string.IsNullOrEmpty(SelectedGender) &&
+        Enum.TryParse<Gender>(SelectedGender, true, out var genderEnum))
+    {
+        // Men/Women filters also include Unisex products;
+        // selecting "Unisex" itself still shows only Unisex items.
+        if (genderEnum == Gender.Unisex)
+        {
+            query = query.Where(p => p.Gender == Gender.Unisex);
+        }
+        else
+        {
+            query = query.Where(p => p.Gender == genderEnum || p.Gender == Gender.Unisex);
+        }
+    }
+
+    Products = query.OrderBy(p => p.Name).ToList();
+    Categories = Enum.GetNames(typeof(ProductCategory))
+        .Where(c => c != nameof(ProductCategory.General))
+        .OrderBy(c => c)
+        .ToList();
+    Genders = Enum.GetNames(typeof(Gender)).OrderBy(g => g).ToList();
+}
 
     private void OnCategoryChanged(ChangeEventArgs e)
     {

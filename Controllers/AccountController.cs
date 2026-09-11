@@ -222,4 +222,22 @@ public class AccountController : Controller
         return Redirect("/");
     }
 
+    [HttpGet("login-success")]
+    [AllowAnonymous]
+    public IActionResult LoginSuccess()
+    {
+        var html = @"<!DOCTYPE html><html><body style='font-family:sans-serif;text-align:center;padding-top:40px;'>
+            <p>Signed in successfully. You can close this window.</p>
+            <script>
+                if (window.opener) {
+                    window.opener.postMessage('google-login-success', window.location.origin);
+                    window.close();
+                } else {
+                    window.location.href = '/';
+                }
+            </script>
+        </body></html>";
+        return Content(html, "text/html");
+}
+
 }

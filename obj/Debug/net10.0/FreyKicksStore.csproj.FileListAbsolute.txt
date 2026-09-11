@@ -183,4 +183,5 @@ C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\ref\FreyKi
 C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\bin\Debug\net10.0\Microsoft.AspNetCore.Authentication.Google.dll
 C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\FreyKicksStore.sourcelink.json
 C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\compressed\caorgzn1lg-{0}-eqtnrt4i6m-eqtnrt4i6m.gz
-C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\compressed\sooytki7dg-{0}-rmdsq8vefb-rmdsq8vefb.gz
+C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\compressed\c1fv6owgi9-{0}-778f8sfek0-778f8sfek0.gz
+C:\Users\Frey\Desktop\FreyKicksStore\FreyKicksStore\obj\Debug\net10.0\compressed\sooytki7dg-{0}-75oai8delv-75oai8delv.gz

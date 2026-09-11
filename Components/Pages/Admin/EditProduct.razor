@@ -89,7 +89,7 @@ else
                         <td><InputText class="form-control" @bind-Value="v.Sku" /></td>
                         <td>
                             <select class="form-select" @bind="v.Size">
-                                @foreach (var s in sizes)
+                                @foreach (var s in AllSizes)
                                 {
                                     <option value="@s">@s</option>
                                 }
@@ -106,35 +106,40 @@ else
             </tbody>
         </table>
 
-        <h6>Add Variant</h6>
-        <div class="row g-2 mb-3">
-                <div class="col-md-2">
-                <InputText class="form-control" placeholder="SKU" @bind-Value="newVariant.Sku" />
+        <hr />
+        <h6>Generate New Variants</h6>
+        <p class="text-muted small">Pick colors and sizes, then Generate — every combination not already listed above gets added automatically with an auto-filled SKU you can still edit.</p>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Colors (comma-separated)</label>
+                <input class="form-control" @bind="colorsInput" placeholder="e.g. Black, White, Red" />
             </div>
-            <div class="col-md-2">
-                <select class="form-select" @bind="newVariant.Size">
-                    @foreach (var s in sizes)
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Sizes</label>
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var s in AllSizes)
                     {
-                        <option value="@s">@s</option>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="form-check-input" type="checkbox" id="size-@s"
+                                   checked="@selectedSizes.Contains(s)"
+                                   @onchange="e => ToggleSize(s, (bool)e.Value!)" />
+                            <label class="form-check-label" for="size-@s">@s</label>
+                        </div>
                     }
-                </select>
-            </div>
-            <div class="col-md-2">
-                <InputText class="form-control" placeholder="Color" @bind-Value="newVariant.Color" />
-            </div>
-            <div class="col-md-2">
-                <InputNumber class="form-control" placeholder="Price" @bind-Value="newVariant.Price" />
-            </div>
-            <div class="col-md-2">
-                <InputNumber class="form-control" placeholder="Stock" @bind-Value="newVariant.Stock" />
-            </div>
-            <div class="col-md-2">
-                <button class="btn btn-secondary w-100" type="button" @onclick="AddNewVariant">Add</button>
+                </div>
             </div>
         </div>
+        <button type="button" class="btn btn-outline-secondary mb-3" @onclick="GenerateVariants">Generate Variants</button>
 
-        <button class="btn btn-primary" type="submit">Save Changes</button>
-        <a class="btn btn-secondary ms-2" href="/admin/inventory">Cancel</a>
+        @if (!string.IsNullOrEmpty(Message))
+        {
+            <div class="alert alert-info mt-3">@Message</div>
+        }
+
+        <div>
+            <button class="btn btn-primary" type="submit">Save Changes</button>
+            <a class="btn btn-secondary ms-2" href="/admin/inventory">Cancel</a>
+        </div>
     </EditForm>
 }
 
@@ -146,8 +151,11 @@ else
 
     private ProductEditModel editModel = new();
     private List<VariantEditModel> variantEditModels = new();
+    private string? Message;
 
-    private VariantEditModel newVariant = new();
+    private string colorsInput = string.Empty;
+    private HashSet<string> selectedSizes = new();
+    private static readonly List<string> AllSizes = Enumerable.Range(37, 12).Select(i => i.ToString()).ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -174,29 +182,95 @@ else
         }).ToList();
     }
 
-    private void AddNewVariant()
+    private void ToggleSize(string size, bool isChecked)
     {
-        // simple validation
-        if (string.IsNullOrWhiteSpace(newVariant.Sku)) return;
+        if (isChecked) selectedSizes.Add(size);
+        else selectedSizes.Remove(size);
+    }
 
-        variantEditModels.Add(new VariantEditModel
+    private void GenerateVariants()
+    {
+        var colors = colorsInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct()
+            .ToList();
+
+        if (!colors.Any() || !selectedSizes.Any())
         {
-            Id = 0,
-            Sku = newVariant.Sku,
-            Size = newVariant.Size,
-            Color = newVariant.Color,
-            Price = newVariant.Price,
-            Stock = newVariant.Stock
-        });
+            Message = "Pick at least one color and one size before generating.";
+            return;
+        }
 
-        newVariant = new VariantEditModel();
+        Message = null;
+        var existingCombos = variantEditModels
+            .Select(v => (Size: v.Size ?? "", Color: (v.Color ?? "").Trim().ToLowerInvariant()))
+            .ToHashSet();
+
+        int added = 0;
+        foreach (var color in colors)
+        {
+            foreach (var size in selectedSizes.OrderBy(s => int.Parse(s)))
+            {
+                var combo = (Size: size, Color: color.Trim().ToLowerInvariant());
+                if (existingCombos.Contains(combo)) continue; // already have this size/color for this product
+
+                variantEditModels.Add(new VariantEditModel
+                {
+                    Id = 0,
+                    Sku = GenerateSku(editModel.Name, editModel.Category, size, color),
+                    Size = size,
+                    Color = color,
+                    Price = 0,
+                    Stock = 0
+                });
+                added++;
+            }
+        }
+
+        Message = added > 0 ? $"Added {added} new variant(s) below. Set their price/stock before saving." : "All those combinations already exist for this product.";
+    }
+
+        private static string GenerateSku(string name, ProductCategory category, string size, string color)
+    {
+        var catCode = category switch
+        {
+            ProductCategory.Sneakers => "SNK",
+            ProductCategory.Corporate => "COR",
+            ProductCategory.Slides => "SLD",
+            ProductCategory.Canvas => "CAN",
+            ProductCategory.Loafers => "LOA",
+            _ => "GEN"
+        };
+
+        var nameSlug = BuildAcronym(name, 3);
+
+        var colorCode = new string(color.Where(char.IsLetter).ToArray()).ToUpperInvariant();
+        colorCode = colorCode.Length >= 3 ? colorCode.Substring(0, 3) : colorCode.PadRight(3, 'X');
+
+        return $"FK-{catCode}-{nameSlug}-{size}-{colorCode}";
+    }
+
+    private static string BuildAcronym(string name, int targetLength)
+    {
+        var words = (name ?? string.Empty)
+            .Split(new[] { ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Any(char.IsLetter))
+            .ToList();
+    
+        var acronym = new string(words
+            .Select(w => w.First(char.IsLetter))
+            .ToArray())
+            .ToUpperInvariant();
+    
+        return acronym.Length >= targetLength
+            ? acronym.Substring(0, targetLength)
+            : acronym.PadRight(targetLength, 'X');
     }
 
     // Image upload support
     private List<string> uploadedImages = new();
     private readonly string[] allowedContentTypes = new[] { "image/jpeg", "image/png", "image/webp" };
     private const long MaxFileSize = 5 * 1024 * 1024; // 5MB
-    private static readonly IEnumerable<string> sizes = Enumerable.Range(37, 12).Select(i => i.ToString());
 
     private async Task HandleSelectedFiles(InputFileChangeEventArgs e)
     {
@@ -230,13 +304,60 @@ else
     {
         if (product == null) return;
 
+        Message = null;
+
+        if (!variantEditModels.Any())
+        {
+            Message = "A product needs at least one variant.";
+            return;
+        }
+
+        foreach (var v in variantEditModels)
+        {
+            if (string.IsNullOrWhiteSpace(v.Sku) || string.IsNullOrWhiteSpace(v.Size) || string.IsNullOrWhiteSpace(v.Color))
+            {
+                Message = "Every variant needs a SKU, size, and color.";
+                return;
+            }
+            if (v.Price <= 0)
+            {
+                Message = $"Variant {v.Sku} needs a price greater than 0.";
+                return;
+            }
+            if (v.Stock < 0)
+            {
+                Message = $"Variant {v.Sku} has an invalid stock value.";
+                return;
+            }
+        }
+
+        var skus = variantEditModels.Select(v => v.Sku!).ToList();
+        var dupesInBatch = skus.GroupBy(s => s).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+        if (dupesInBatch.Any())
+        {
+            Message = $"Duplicate SKU(s) in this list: {string.Join(", ", dupesInBatch)}. Edit them to be unique.";
+            return;
+        }
+
+        // Exclude this product's own current variant IDs — editing a variant without
+        // changing its SKU shouldn't flag itself as a "duplicate".
+        var ownVariantIds = variantEditModels.Where(v => v.Id > 0).Select(v => v.Id).ToHashSet();
+        var conflicts = await DbContext.ProductVariants
+            .Where(pv => skus.Contains(pv.Sku) && !ownVariantIds.Contains(pv.Id))
+            .Select(pv => pv.Sku)
+            .ToListAsync();
+        if (conflicts.Any())
+        {
+            Message = $"These SKUs already exist elsewhere: {string.Join(", ", conflicts)}. Edit them to be unique.";
+            return;
+        }
+
         product.Name = editModel.Name;
         product.Description = editModel.Description;
         product.Category = editModel.Category;
         product.Gender = editModel.Gender;
         product.ImageUrl = editModel.ImageUrl;
 
-        // Update existing variants and collect ids to keep
         var keepIds = new List<int>();
         foreach (var ve in variantEditModels)
         {
@@ -255,7 +376,6 @@ else
             }
             else
             {
-                // new variant
                 var nv = new ProductVariant
                 {
                     Sku = ve.Sku ?? string.Empty,
@@ -268,7 +388,6 @@ else
             }
         }
 
-        // Remove variants that were removed in the UI
         var toRemove = product.Variants.Where(v => v.Id > 0 && !keepIds.Contains(v.Id)).ToList();
         if (toRemove.Any())
         {
@@ -276,7 +395,6 @@ else
             foreach (var r in toRemove) product.Variants.Remove(r);
         }
 
-        // Merge any uploaded images into ImageUrls
         var existingImages = (product.ImageUrls ?? string.Empty).Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
         if (uploadedImages.Any())
         {

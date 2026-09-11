@@ -1,0 +1,16 @@
+# Build artifacts
+bin/
+obj/
+*.user
+
+# SQLite database and journal files
+*.db
+*.db-shm
+*.db-wal
+
+# IDE
+.vs/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -143,3 +143,37 @@ h1:focus {
     background-color: transparent;
     color: #fff;
 }
+
+
+.toast-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #212529;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1050;
+    animation: fadeInOut 2.5s ease forwards;
+}
+@keyframes fadeInOut {
+    0%   { opacity: 0; transform: translateY(-10px); }
+    10%  { opacity: 1; transform: translateY(0); }
+    85%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+.logo-centered {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        text-align: center;
+    }
+
+    @media (min-width: 992px) {
+        .logo-centered {
+            position: static;
+            transform: none;
+        }
+    }

@@ -121,6 +121,8 @@ app.UseStatusCodePages(context =>
 });
 app.UseHttpsRedirection();
 
+app.UseStaticFiles();
+
 app.UseAntiforgery();
 
 app.UseAuthentication();

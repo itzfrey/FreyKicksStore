@@ -8,17 +8,16 @@
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
 
-        <!-- True centering: absolutely positioned + translateX(-50%) keeps this
-             centered in the full bar regardless of how wide the left/right
-             content is, unlike margin-based centering. -->
-        <a class="site-logo navbar-brand m-0" href="/" style="position:absolute; left:50%; transform:translateX(-50%); text-align:center;">
+        <!-- Logo: normal flow, left-aligned -->
+        <a class="site-logo navbar-brand m-0 logo-centered" href="/">
             <img src="/images/products/Frey_kicks_logo.png" alt="Frey Kicks" style="height:50px;" class="d-none d-lg-inline-block" />
             <span class="d-lg-none lh-1 d-inline-block">
                 Frey<br />Kicks
             </span>
         </a>
 
-        <div class="d-none d-lg-flex align-items-center position-relative ms-4">
+        <!-- Nav links: absolutely centered in the full bar -->
+        <div class="d-none d-lg-flex align-items-center position-absolute" style="left:50%; top:50%; transform:translate(-50%, -50%);">
             <ul class="navbar-nav me-3">
                 <li class="nav-item position-relative">
                     <a class="nav-link" href="#" @onclick="ToggleMenDesktop" @onclick:preventDefault>Men ▾</a>
@@ -49,6 +48,7 @@
         </div>
 
         <div class="d-flex align-items-center ms-auto">
+            <!-- icons unchanged -->
             <AuthorizeView>
                 <Authorized>
                     <form method="post" action="/account/logout" class="m-0 me-3">
