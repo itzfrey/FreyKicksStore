@@ -1,109 +1,400 @@
-﻿@page "/"
+﻿```razor
+@page "/"
+
 @using FreyKicksStore.Models
 @using Microsoft.EntityFrameworkCore
 @using FreyKicksStore.Components.Shared
+
 @inject FreyKicksStore.Data.ApplicationDbContext DbContext
 
 <PageTitle>Frey Kicks</PageTitle>
 
-<section class="hero">
-    <img src="/images/products/freykicks_hero.webp" alt="Featured sneakers" class="hero-bg" />
-    <div class="hero-overlay"></div>
-    <div class="hero-content">
-        <h1 class="site-logo hero-title">Frey Kicks</h1>
-        <p class="hero-subtitle">Sneakers, corporate shoes, and slides — for everyone.</p>
-        <a href="/shop" class="btn hero-cta">Shop Now</a>
+<section class="hero-carousel" id="heroCarousel">
+
+    @for (int i = 0; i < HeroSlides.Count; i++)
+    {
+        var slide = HeroSlides[i];
+
+        <a href="/shop?category=@slide.Category"
+           class="hero-slide @(i == 0 ? "active" : "")">
+
+            <img src="@slide.ImageUrl"
+                 alt="@slide.Category"
+                 class="hero-bg" />
+
+            <div class="hero-overlay"></div>
+
+            <div class="hero-content">
+                <h1 class="site-logo hero-title">Frey Kicks</h1>
+
+                <p class="hero-subtitle">
+                    @slide.Subtitle
+                </p>
+
+                <span class="btn hero-cta">
+                    Shop @slide.Category
+                </span>
+            </div>
+
+        </a>
+    }
+
+    <div class="hero-dots">
+        @for (int i = 0; i < HeroSlides.Count; i++)
+        {
+            <button type="button"
+                    class="hero-dot @(i == 0 ? "active" : "")"
+                    data-index="@i"
+                    aria-label="Go to slide @(i + 1)">
+            </button>
+        }
     </div>
+
 </section>
+
 
 @if (Bestsellers.Any())
 {
     <section class="mb-5">
+
         <h3 class="mb-3">Bestsellers</h3>
+
         <div class="row row-cols-2 row-cols-md-4 g-3">
+
             @foreach (var p in Bestsellers)
             {
-                <div class="col"><ProductCard Product="p" /></div>
+                <div class="col">
+                    <ProductCard Product="p" />
+                </div>
             }
+
         </div>
+
     </section>
 }
+
 
 @if (LatestArrivals.Any())
 {
     <section class="mb-5">
+
         <h3 class="mb-3">Latest Arrivals</h3>
+
         <div class="row row-cols-2 row-cols-md-4 g-3">
+
             @foreach (var p in LatestArrivals)
             {
-                <div class="col"><ProductCard Product="p" /></div>
+                <div class="col">
+                    <ProductCard Product="p" />
+                </div>
             }
+
         </div>
+
     </section>
 }
+
 
 @if (Slides.Any())
 {
     <section class="mb-5">
+
         <h3 class="mb-3">Slides</h3>
+
         <div class="row row-cols-2 row-cols-md-4 g-3">
+
             @foreach (var p in Slides)
             {
-                <div class="col"><ProductCard Product="p" /></div>
+                <div class="col">
+                    <ProductCard Product="p" />
+                </div>
             }
+
         </div>
+
     </section>
 }
+
 
 @if (RandomSneakers.Any())
 {
     <section class="mb-5">
+
         <h3 class="mb-3">Sneakers You Might Like</h3>
+
         <div class="row row-cols-2 row-cols-md-4 g-3">
+
             @foreach (var p in RandomSneakers)
             {
-                <div class="col"><ProductCard Product="p" /></div>
+                <div class="col">
+                    <ProductCard Product="p" />
+                </div>
             }
+
         </div>
+
     </section>
 }
 
+
 <footer class="border-top pt-4 pb-5 mt-5 text-center text-muted">
-    <div class="mb-2 fw-bold text-dark">Frey Kicks</div>
-    <div class="mb-2">
-        <a href="/shop" class="text-muted me-3">Shop</a>
-        <a href="/contact" class="text-muted me-3">Contact Us</a>
-        <a href="/cart" class="text-muted">Cart</a>
+
+    <div class="mb-2 fw-bold text-dark">
+        Frey Kicks
     </div>
-    <small>&copy; @DateTime.Now.Year Frey Kicks. All rights reserved.</small>
+
+    <div class="mb-2">
+
+        <a href="/shop" class="text-muted me-3">
+            Shop
+        </a>
+
+        <a href="/contact" class="text-muted me-3">
+            Contact Us
+        </a>
+
+        <a href="/cart" class="text-muted">
+            Cart
+        </a>
+
+    </div>
+
+    <small>
+        &copy; @DateTime.Now.Year Frey Kicks. All rights reserved.
+    </small>
+
 </footer>
 
+
 @code {
+
     private List<Product> Bestsellers = new();
     private List<Product> LatestArrivals = new();
     private List<Product> Slides = new();
     private List<Product> RandomSneakers = new();
+    private List<HeroSlideData> HeroSlides = new();
+
+
+    private static readonly Dictionary<ProductCategory, string> CategoryTaglines = new()
+    {
+        { ProductCategory.Sneakers, "Step out in style" },
+        { ProductCategory.Corporate, "Boardroom ready" },
+        { ProductCategory.Slides, "Kick back, relax" },
+        { ProductCategory.Canvas, "Everyday essentials" },
+        { ProductCategory.Loafers, "Effortlessly sharp" }
+    };
+
 
     protected override void OnInitialized()
     {
-        var allActive = DbContext.Products.Include(p => p.Variants);
+        var allActive = DbContext.Products
+            .Include(p => p.Variants);
 
-        // NOTE: no real sales/order data exists yet (checkout doesn't persist orders —
-        // see ARCHITECTURE.md's mock-checkout plan and SCHEMA.md's still-unbuilt Order
-        // model). Until that exists, "Bestsellers" is a placeholder — just the most
-        // recently added products. Swap this for a real sales-based query once Order
-        // tracking is built.
-        Bestsellers = allActive.OrderByDescending(p => p.Id).Take(4).ToList();
 
-        LatestArrivals = allActive.OrderByDescending(p => p.Id).Skip(4).Take(4).ToList();
+        // Featured / bestselling products
+        Bestsellers = allActive
+            .OrderByDescending(p => p.Id)
+            .Take(4)
+            .ToList();
 
-        Slides = allActive.Where(p => p.Category == ProductCategory.Slides).Take(4).ToList();
 
-        // Randomize client-side since SQLite doesn't have a clean EF-translatable random order.
-        RandomSneakers = allActive.Where(p => p.Category == ProductCategory.Sneakers)
+        // Latest arrivals
+        LatestArrivals = allActive
+            .OrderByDescending(p => p.Id)
+            .Skip(4)
+            .Take(4)
+            .ToList();
+
+
+        // Slides
+        Slides = allActive
+            .Where(p => p.Category == ProductCategory.Slides)
+            .Take(4)
+            .ToList();
+
+
+        // Random sneakers
+        RandomSneakers = allActive
+            .Where(p => p.Category == ProductCategory.Sneakers)
             .ToList()
             .OrderBy(_ => Guid.NewGuid())
             .Take(4)
             .ToList();
+
+
+        // Hero carousel:
+        // Add one featured image for each product category.
+        // Categories without products/images are skipped.
+
+        var categories = Enum.GetValues<ProductCategory>()
+            .Where(c => c != ProductCategory.General);
+
+
+        foreach (var cat in categories)
+        {
+            var product = allActive
+                .Where(p =>
+                    p.Category == cat &&
+                    !string.IsNullOrEmpty(p.ImageUrls))
+                .FirstOrDefault();
+
+
+            if (product != null)
+            {
+                var firstImage = product.ImageUrls!
+                    .Split(
+                        ',',
+                        StringSplitOptions.RemoveEmptyEntries
+                    )
+                    .FirstOrDefault()?
+                    .Trim();
+
+
+                if (!string.IsNullOrEmpty(firstImage))
+                {
+                    HeroSlides.Add(new HeroSlideData
+                    {
+                        Category = cat.ToString(),
+
+                        ImageUrl = firstImage,
+
+                        Subtitle = CategoryTaglines.TryGetValue(
+                            cat,
+                            out var tagline)
+                                ? tagline
+                                : cat.ToString()
+                    });
+                }
+            }
+        }
+
+
+        // Fallback hero image if there are no products with images.
+
+        if (!HeroSlides.Any())
+        {
+            HeroSlides.Add(new HeroSlideData
+            {
+                Category = "Shop",
+
+                ImageUrl = "/images/products/freykicks_hero.webp",
+
+                Subtitle =
+                    "Sneakers, corporate shoes, and slides — for everyone."
+            });
+        }
     }
+
+
+    private class HeroSlideData
+    {
+        public string Category { get; set; } = string.Empty;
+
+        public string ImageUrl { get; set; } = string.Empty;
+
+        public string Subtitle { get; set; } = string.Empty;
+    }
+
 }
+
+
+<script>
+
+    (function () {
+
+        const carousel =
+            document.getElementById('heroCarousel');
+
+        if (!carousel) return;
+
+
+        const slides =
+            carousel.querySelectorAll('.hero-slide');
+
+        const dots =
+            carousel.querySelectorAll('.hero-dot');
+
+
+        let current = 0;
+        let timer;
+
+
+        function showSlide(index) {
+
+            slides.forEach((slide, i) => {
+
+                slide.classList.toggle(
+                    'active',
+                    i === index
+                );
+
+            });
+
+
+            dots.forEach((dot, i) => {
+
+                dot.classList.toggle(
+                    'active',
+                    i === index
+                );
+
+            });
+
+
+            current = index;
+        }
+
+
+        function nextSlide() {
+
+            if (slides.length === 0) return;
+
+            showSlide(
+                (current + 1) % slides.length
+            );
+
+        }
+
+
+        function startTimer() {
+
+            clearInterval(timer);
+
+            timer = setInterval(
+                nextSlide,
+                4000
+            );
+
+        }
+
+
+        dots.forEach((dot, i) => {
+
+            dot.addEventListener(
+                'click',
+                (e) => {
+
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    clearInterval(timer);
+
+                    showSlide(i);
+
+                    startTimer();
+
+                }
+            );
+
+        });
+
+
+        if (slides.length > 1) {
+
+            startTimer();
+
+        }
+
+    })();
+
+</script>

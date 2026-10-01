@@ -1,0 +1,47 @@
+@page "/admin/customers"
+@layout FreyKicksStore.Components.Layout.AdminLayout
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using FreyKicksStore.Models
+@inject FreyKicksStore.Data.ApplicationDbContext DbContext
+
+<h2>Customers</h2>
+
+@if (Users == null)
+{
+    <p>Loading...</p>
+}
+else if (!Users.Any())
+{
+    <p>No customers yet.</p>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Username</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var u in Users)
+            {
+                <tr>
+                    <td>@(u.FullName ?? "—")</td>
+                    <td>@u.Email</td>
+                    <td>@u.UserName</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ApplicationUser>? Users;
+
+    protected override void OnInitialized()
+    {
+        Users = DbContext.Users.OrderBy(u => u.Email).ToList();
+    }
+}
