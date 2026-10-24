@@ -25,8 +25,21 @@ namespace FreyKicksStore.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("City")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Email")
@@ -62,7 +75,13 @@ namespace FreyKicksStore.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("PostalCode")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("SecurityStamp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("State")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("TwoFactorEnabled")

@@ -346,6 +346,195 @@ public class AccountController : Controller
         }
     }
 
+    [HttpPost("profile")]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateProfile([FromForm] string fullName, [FromForm] string phoneNumber)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return Redirect("/account?tab=profile&status=not_authenticated");
+        }
+
+        var trimmedFullName = (fullName ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(trimmedFullName) || trimmedFullName.Length > 100)
+        {
+            return Redirect("/account?tab=profile&status=profile_invalid");
+        }
+
+        var trimmedPhone = (phoneNumber ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(trimmedPhone) && (trimmedPhone.Length > 20 || !Regex.IsMatch(trimmedPhone, "^[0-9+()\\-\\s]{7,20}$")))
+        {
+            return Redirect("/account?tab=profile&status=phone_invalid");
+        }
+
+        user.FullName = trimmedFullName;
+        user.PhoneNumber = string.IsNullOrWhiteSpace(trimmedPhone) ? null : trimmedPhone;
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            return Redirect("/account?tab=profile&status=profile_failed");
+        }
+
+        return Redirect("/account?tab=profile&status=profile_saved");
+    }
+
+    [HttpPost("address")]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateAddress(
+        [FromForm] string addressLine1,
+        [FromForm] string addressLine2,
+        [FromForm] string city,
+        [FromForm] string state,
+        [FromForm] string postalCode,
+        [FromForm] string country)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return Redirect("/account?tab=address&status=not_authenticated");
+        }
+
+        var hasAnyAddressData = !string.IsNullOrWhiteSpace(addressLine1)
+            || !string.IsNullOrWhiteSpace(addressLine2)
+            || !string.IsNullOrWhiteSpace(city)
+            || !string.IsNullOrWhiteSpace(state)
+            || !string.IsNullOrWhiteSpace(postalCode)
+            || !string.IsNullOrWhiteSpace(country);
+
+        if (hasAnyAddressData)
+        {
+            if (string.IsNullOrWhiteSpace(addressLine1) || string.IsNullOrWhiteSpace(city) || string.IsNullOrWhiteSpace(state))
+            {
+                return Redirect("/account?tab=address&status=address_incomplete");
+            }
+        }
+
+        user.AddressLine1 = string.IsNullOrWhiteSpace(addressLine1) ? null : addressLine1.Trim();
+        user.AddressLine2 = string.IsNullOrWhiteSpace(addressLine2) ? null : addressLine2.Trim();
+        user.City = string.IsNullOrWhiteSpace(city) ? null : city.Trim();
+        user.State = string.IsNullOrWhiteSpace(state) ? null : state.Trim();
+        user.PostalCode = string.IsNullOrWhiteSpace(postalCode) ? null : postalCode.Trim();
+        user.Country = string.IsNullOrWhiteSpace(country) ? "Nigeria" : country.Trim();
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            return Redirect("/account?tab=address&status=address_failed");
+        }
+
+        return Redirect("/account?tab=address&status=address_saved");
+    }
+
+    [HttpPost("change-password")]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangePassword([FromForm] string currentPassword, [FromForm] string newPassword, [FromForm] string confirmPassword)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return Redirect("/account?tab=security&status=not_authenticated");
+        }
+
+        if (!await _userManager.HasPasswordAsync(user))
+        {
+            return Redirect("/account?tab=security&status=set_password_required");
+        }
+
+        if (string.IsNullOrWhiteSpace(newPassword) || string.IsNullOrWhiteSpace(confirmPassword) || newPassword != confirmPassword)
+        {
+            return Redirect("/account?tab=security&status=passwords_do_not_match");
+        }
+
+        var changeResult = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+        if (!changeResult.Succeeded)
+        {
+            return Redirect("/account?tab=security&status=bad_password");
+        }
+
+        await _signInManager.RefreshSignInAsync(user);
+        return Redirect("/account?tab=security&status=password_changed");
+    }
+
+    [HttpPost("set-password")]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetPassword([FromForm] string newPassword, [FromForm] string confirmPassword)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return Redirect("/account?tab=security&status=not_authenticated");
+        }
+
+        if (await _userManager.HasPasswordAsync(user))
+        {
+            return Redirect("/account?tab=security&status=password_exists");
+        }
+
+        if (string.IsNullOrWhiteSpace(newPassword) || string.IsNullOrWhiteSpace(confirmPassword) || newPassword != confirmPassword)
+        {
+            return Redirect("/account?tab=security&status=passwords_do_not_match");
+        }
+
+        var addResult = await _userManager.AddPasswordAsync(user, newPassword);
+        if (!addResult.Succeeded)
+        {
+            return Redirect("/account?tab=security&status=password_set_failed");
+        }
+
+        await _signInManager.RefreshSignInAsync(user);
+        return Redirect("/account?tab=security&status=password_set");
+    }
+
+    [HttpPost("delete-account")]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteAccount([FromForm] string deleteConfirm, [FromForm] string currentPassword)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return Redirect("/account?tab=security&status=not_authenticated");
+        }
+
+        if (User.IsInRole("Admin"))
+        {
+            return Redirect("/account?tab=security&status=admin_protected");
+        }
+
+        if (!string.Equals(deleteConfirm, "DELETE", StringComparison.Ordinal))
+        {
+            return Redirect("/account?tab=security&status=delete_confirm_required");
+        }
+
+        if (await _userManager.HasPasswordAsync(user) && !string.IsNullOrWhiteSpace(currentPassword))
+        {
+            var verify = await _userManager.CheckPasswordAsync(user, currentPassword);
+            if (!verify)
+            {
+                return Redirect("/account?tab=security&status=bad_password");
+            }
+        }
+        else if (await _userManager.HasPasswordAsync(user))
+        {
+            return Redirect("/account?tab=security&status=bad_password");
+        }
+
+        var result = await _userManager.DeleteAsync(user);
+        if (!result.Succeeded)
+        {
+            return Redirect("/account?tab=security&status=delete_failed");
+        }
+
+        await _signInManager.SignOutAsync();
+        return Redirect("/?status=account_deleted");
+    }
+
     [HttpPost("logout")]
     [Authorize]
     public async Task<IActionResult> Logout()

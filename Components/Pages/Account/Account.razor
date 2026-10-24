@@ -1,54 +1,1180 @@
 @page "/account"
 @attribute [Authorize]
 @rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@using FreyKicksStore.Models
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
 
 <PageTitle>My account</PageTitle>
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
-                    <h3 class="mb-3">My account</h3>
+<div class="account-shell">
+    <div class="container py-4 py-lg-5">
+        <div class="row g-4">
+            <aside class="col-lg-3">
+                <div class="sidebar-card">
+                    <div class="account-user-header">
+                        <div class="avatar">@Initials</div>
+                        <div class="account-user-meta">
+                            <div class="account-user-name">@DisplayName</div>
+                            <div class="account-user-email" title="@Email">@Email</div>
+                            <div class="account-user-chip" aria-label="Signed in with @SignInMethod">
+                                @if (string.Equals(SignInMethod, "Google", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M21.5 12.2c0-.7-.1-1.3-.2-1.9H12v3.6h5.4c-.2 1.3-.9 2.4-2 3.1v2.6h3.2c1.9-1.7 3-4.3 3-7.4Z" fill="#4285F4"/>
+                                        <path d="M12 21.2c2.7 0 5-.9 6.6-2.4l-3.2-2.6c-.9.6-2.1 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H.5v2.7A9.2 9.2 0 0 0 12 21.2Z" fill="#34A853"/>
+                                        <path d="M6.4 17.1A5.6 5.6 0 0 1 6.1 15V12.3H2.9A9.2 9.2 0 0 0 2.6 15c0 1.5.4 2.9 1.1 4.1l2.7-2Z" fill="#FBBC05"/>
+                                        <path d="M12 4.9c1.5 0 2.9.5 4 1.5l2.9-2.9A8.9 8.9 0 0 0 12 2.1 9.2 9.2 0 0 0 2.6 9.1h3.5A5.6 5.6 0 0 1 12 4.9Z" fill="#EA4335"/>
+                                    </svg>
+                                }
+                                else
+                                {
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                                        <path d="m5.5 7 6.5 5 6.5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                }
+                                <span>@SignInMethod</span>
+                            </div>
+                        </div>
+                    </div>
 
-                    <dl class="row mb-4">
-                        <dt class="col-sm-4">Full name</dt>
-                        <dd class="col-sm-8">@FullName</dd>
-
-                        <dt class="col-sm-4">Email</dt>
-                        <dd class="col-sm-8">@Email</dd>
-                    </dl>
-
-                    <form method="post" action="/account/logout">
+                    <form method="post" action="/account/logout" class="logout-form account-logout-header">
                         <AntiforgeryToken />
-                        <button type="submit" class="btn btn-outline-danger">Logout</button>
+                        <button type="submit" class="logout-button compact" aria-label="Logout">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M9 7V5.8A1.8 1.8 0 0 1 10.8 4h7.4A1.8 1.8 0 0 1 20 5.8v12.4a1.8 1.8 0 0 1-1.8 1.8h-7.4A1.8 1.8 0 0 1 9 18.2V17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                <path d="M4 12h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                <path d="M9 7.5 4 12l5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
                     </form>
+
+                    <nav class="nav flex-column account-tabs" aria-label="Account sections">
+                        @foreach (var tab in Tabs)
+                        {
+                            <button type="button" class="tab-button @(ActiveTab == tab.Key ? "active" : string.Empty)" @onclick="() => GoToTab(tab.Key)">
+                                <span class="nav-icon" aria-hidden="true">
+                                    @switch (tab.Key)
+                                    {
+                                        case "profile":
+                                            <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-7 7.5a7 7 0 0 1 14 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                            break;
+                                        case "address":
+                                            <svg viewBox="0 0 24 24"><path d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+                                            break;
+                                        case "security":
+                                            <svg viewBox="0 0 24 24"><path d="M7 10V7.8A5 5 0 0 1 12 3a5 5 0 0 1 5 4.8V10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="5" y="10" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 13v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                                            break;
+                                        default:
+                                            <svg viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 8.5 12 13l7.5-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                            break;
+                                    }
+                                </span>
+                                <span>@tab.Value</span>
+                            </button>
+                        }
+                    </nav>
+
+                    <div class="account-sidebar-footer">
+                        <form method="post" action="/account/logout" class="logout-form">
+                            <AntiforgeryToken />
+                            <button type="submit" class="logout-button">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M9 7V5.8A1.8 1.8 0 0 1 10.8 4h7.4A1.8 1.8 0 0 1 20 5.8v12.4a1.8 1.8 0 0 1-1.8 1.8h-7.4A1.8 1.8 0 0 1 9 18.2V17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                    <path d="M4 12h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                    <path d="M9 7.5 4 12l5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span>Logout</span>
+                            </button>
+                        </form>
+                    </div>
                 </div>
-            </div>
+            </aside>
+
+            <main class="col-lg-9">
+                @if (!string.IsNullOrWhiteSpace(AlertMessage))
+                {
+                    <div class="alert alert-@AlertType alert-dismissible fade show" role="alert" aria-live="polite">
+                        @AlertMessage
+                        <button type="button" class="btn-close" aria-label="Close" @onclick="DismissAlert"></button>
+                    </div>
+                }
+
+                @switch (ActiveTab)
+                {
+                    case "profile":
+                        <div class="content-card">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h3 class="mb-0">Profile</h3>
+                            </div>
+
+                            <EditForm Model="ProfileModel" OnValidSubmit="SaveProfileAsync">
+                                <DataAnnotationsValidator />
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="full-name">Full name</label>
+                                    <InputText id="full-name" class="form-control" @bind-Value="ProfileModel.FullName" />
+                                    <ValidationMessage For="() => ProfileModel.FullName" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="phone-number">Phone number</label>
+                                    <InputText id="phone-number" class="form-control" @bind-Value="ProfileModel.PhoneNumber" />
+                                    <ValidationMessage For="() => ProfileModel.PhoneNumber" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="email-readonly">Email</label>
+                                    <input id="email-readonly" class="form-control" value="@Email" readonly />
+                                </div>
+
+                                <button type="submit" class="btn btn-dark" disabled="@IsSavingProfile">
+                                    @(IsSavingProfile ? "Saving..." : "Save profile")
+                                </button>
+                            </EditForm>
+                        </div>
+                        break;
+
+                    case "address":
+                        <div class="content-card">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h3 class="mb-0">Address</h3>
+                            </div>
+
+                            <div class="small text-muted mb-3">This address will be used at checkout.</div>
+
+                            <EditForm Model="AddressModel" OnValidSubmit="SaveAddressAsync">
+                                <DataAnnotationsValidator />
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="address-line1">Address line 1</label>
+                                    <InputText id="address-line1" class="form-control" @bind-Value="AddressModel.AddressLine1" />
+                                    <ValidationMessage For="() => AddressModel.AddressLine1" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="address-line2">Address line 2</label>
+                                    <InputText id="address-line2" class="form-control" @bind-Value="AddressModel.AddressLine2" />
+                                    <ValidationMessage For="() => AddressModel.AddressLine2" />
+                                </div>
+
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="city">City</label>
+                                        <InputText id="city" class="form-control" @bind-Value="AddressModel.City" />
+                                        <ValidationMessage For="() => AddressModel.City" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="state">State</label>
+                                        <InputText id="state" class="form-control" @bind-Value="AddressModel.State" />
+                                        <ValidationMessage For="() => AddressModel.State" />
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mt-0">
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="postal-code">Postal code</label>
+                                        <InputText id="postal-code" class="form-control" @bind-Value="AddressModel.PostalCode" />
+                                        <ValidationMessage For="() => AddressModel.PostalCode" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="country">Country</label>
+                                        <InputText id="country" class="form-control" @bind-Value="AddressModel.Country" />
+                                        <ValidationMessage For="() => AddressModel.Country" />
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-dark mt-4" disabled="@IsSavingAddress">
+                                    @(IsSavingAddress ? "Saving..." : "Save address")
+                                </button>
+                            </EditForm>
+                        </div>
+                        break;
+
+                    case "security":
+                        <div class="content-card">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h3 class="mb-0">Security</h3>
+                            </div>
+
+                            <div class="mb-4">
+                                <div class="fw-semibold mb-2">Linked sign-in methods</div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <span class="method-pill">@SignInMethod</span>
+                                    @if (HasPassword)
+                                    {
+                                        <span class="method-pill">Password</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="method-pill muted">No password yet</span>
+                                    }
+                                </div>
+                            </div>
+
+                            @if (HasPassword)
+                            {
+                                <div class="section-block">
+                                    <h5 class="mb-3">Change password</h5>
+                                    <EditForm Model="PasswordChangeModel" OnValidSubmit="HandleChangePasswordAsync">
+                                        <DataAnnotationsValidator />
+
+                                        <div class="mb-3 position-relative">
+                                            <label class="form-label" for="current-password">Current password</label>
+                                            <div class="input-group">
+                                                <InputText id="current-password" type="@(ShowCurrentPassword ? "text" : "password")" class="form-control" @bind-Value="PasswordChangeModel.CurrentPassword" />
+                                                <button type="button" class="btn btn-outline-secondary" @onclick="() => ToggleVisibility(nameof(PasswordChangeModel.CurrentPassword))">@(ShowCurrentPassword ? "Hide" : "Show")</button>
+                                            </div>
+                                            <ValidationMessage For="() => PasswordChangeModel.CurrentPassword" />
+                                        </div>
+
+                                        <div class="mb-3 position-relative">
+                                            <label class="form-label" for="new-password">New password</label>
+                                            <div class="input-group">
+                                                <InputText id="new-password" type="@(ShowNewPassword ? "text" : "password")" class="form-control" @bind-Value="PasswordChangeModel.NewPassword" />
+                                                <button type="button" class="btn btn-outline-secondary" @onclick="() => ToggleVisibility(nameof(PasswordChangeModel.NewPassword))">@(ShowNewPassword ? "Hide" : "Show")</button>
+                                            </div>
+                                            <ValidationMessage For="() => PasswordChangeModel.NewPassword" />
+                                        </div>
+
+                                        <div class="mb-3 position-relative">
+                                            <label class="form-label" for="confirm-password">Confirm new password</label>
+                                            <div class="input-group">
+                                                <InputText id="confirm-password" type="@(ShowConfirmPassword ? "text" : "password")" class="form-control" @bind-Value="PasswordChangeModel.ConfirmPassword" />
+                                                <button type="button" class="btn btn-outline-secondary" @onclick="() => ToggleVisibility(nameof(PasswordChangeModel.ConfirmPassword))">@(ShowConfirmPassword ? "Hide" : "Show")</button>
+                                            </div>
+                                            <ValidationMessage For="() => PasswordChangeModel.ConfirmPassword" />
+                                        </div>
+
+                                        <button type="submit" class="btn btn-dark" disabled="@IsSavingPassword">@(IsSavingPassword ? "Updating..." : "Update password")</button>
+                                    </EditForm>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="section-block">
+                                    <h5 class="mb-3">Set a password</h5>
+                                    <EditForm Model="SetPasswordModel" OnValidSubmit="HandleSetPasswordAsync">
+                                        <DataAnnotationsValidator />
+
+                                        <div class="mb-3 position-relative">
+                                            <label class="form-label" for="set-password">New password</label>
+                                            <div class="input-group">
+                                                <InputText id="set-password" type="@(ShowSetPassword ? "text" : "password")" class="form-control" @bind-Value="SetPasswordModel.NewPassword" />
+                                                <button type="button" class="btn btn-outline-secondary" @onclick="() => ToggleVisibility(nameof(SetPasswordModel.NewPassword))">@(ShowSetPassword ? "Hide" : "Show")</button>
+                                            </div>
+                                            <ValidationMessage For="() => SetPasswordModel.NewPassword" />
+                                        </div>
+
+                                        <div class="mb-3 position-relative">
+                                            <label class="form-label" for="set-confirm-password">Confirm password</label>
+                                            <div class="input-group">
+                                                <InputText id="set-confirm-password" type="@(ShowSetConfirmPassword ? "text" : "password")" class="form-control" @bind-Value="SetPasswordModel.ConfirmPassword" />
+                                                <button type="button" class="btn btn-outline-secondary" @onclick="() => ToggleVisibility(nameof(SetPasswordModel.ConfirmPassword))">@(ShowSetConfirmPassword ? "Hide" : "Show")</button>
+                                            </div>
+                                            <ValidationMessage For="() => SetPasswordModel.ConfirmPassword" />
+                                        </div>
+
+                                        <button type="submit" class="btn btn-dark" disabled="@IsSettingPassword">@(IsSettingPassword ? "Saving..." : "Set password")</button>
+                                    </EditForm>
+                                </div>
+                            }
+
+                            <div class="danger-zone mt-5">
+                                <h5 class="mb-3">Danger zone</h5>
+
+                                @if (IsAdmin)
+                                {
+                                    <div class="alert alert-secondary mb-0">Admin accounts cannot be deleted.</div>
+                                }
+                                else
+                                {
+                                    <EditForm Model="DeleteAccountModel" OnValidSubmit="SubmitDeleteAccountAsync">
+                                        <DataAnnotationsValidator />
+
+                                        <div class="mb-3">
+                                            <label class="form-label" for="delete-confirm">Type DELETE to confirm</label>
+                                            <InputText id="delete-confirm" class="form-control" @bind-Value="DeleteAccountModel.ConfirmText" />
+                                            <ValidationMessage For="() => DeleteAccountModel.ConfirmText" />
+                                        </div>
+
+                                        @if (HasPassword)
+                                        {
+                                            <div class="mb-3">
+                                                <label class="form-label" for="delete-password">Current password</label>
+                                                <InputText id="delete-password" type="password" class="form-control" @bind-Value="DeleteAccountModel.CurrentPassword" />
+                                                <ValidationMessage For="() => DeleteAccountModel.CurrentPassword" />
+                                            </div>
+                                        }
+
+                                        <button type="submit" class="btn btn-outline-danger" disabled="@IsDeletingAccount">@(IsDeletingAccount ? "Deleting..." : "Delete account")</button>
+                                    </EditForm>
+                                }
+                            </div>
+                        </div>
+                        break;
+
+                    case "orders":
+                        <div class="content-card text-center py-5">
+                            <div class="empty-state-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 7h18l-1.5 12a2 2 0 0 1-2 1.7H6.5a2 2 0 0 1-2-1.7L3 7Z" />
+                                    <path d="M8 10V6a4 4 0 0 1 8 0v4" />
+                                </svg>
+                            </div>
+                            <h3 class="mt-4">No orders yet</h3>
+                            <p class="text-muted">Your order history will appear here after you place an order.</p>
+                            <a class="btn btn-dark mt-3" href="/shop">Start shopping</a>
+                        </div>
+                        break;
+
+                    default:
+                        <div class="content-card">
+                            <h3>Profile</h3>
+                        </div>
+                        break;
+                }
+            </main>
         </div>
     </div>
 </div>
 
-@code {
-    [CascadingParameter]
-    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+<style>
+    body {
+        background: #f8f9fa;
+    }
 
-    private string FullName { get; set; } = string.Empty;
-    private string Email { get; set; } = string.Empty;
+    .account-shell {
+        background: #f8f9fa;
+        min-height: 100vh;
+    }
+
+    .sidebar-card,
+    .content-card {
+        background: #fff;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: 16px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.03);
+    }
+
+    .sidebar-card {
+        padding: 20px;
+        position: sticky;
+        top: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+    }
+
+    .content-card {
+        padding: 1.5rem;
+    }
+
+    .account-user-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .account-user-meta {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .account-user-name {
+        font-weight: 700;
+        color: #111;
+        line-height: 1.3;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .account-user-email {
+        color: #6c757d;
+        font-size: 0.8rem;
+        min-width: 0;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    .avatar {
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+        min-height: 48px;
+        flex: 0 0 48px;
+        border-radius: 50%;
+        background: #111;
+        color: #fff;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
+
+    .account-user-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        width: fit-content;
+        padding: 4px 8px;
+        margin-top: 6px;
+        border-radius: 999px;
+        background: #f1f3f5;
+        color: #1f2328;
+        font-size: 12px;
+        line-height: 1;
+        border: 1px solid #e9ecef;
+    }
+
+    .account-user-chip svg {
+        width: 12px;
+        height: 12px;
+        display: block;
+    }
+
+    .status-badge,
+    .method-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.4rem 0.8rem;
+        border-radius: 999px;
+        font-size: 0.76rem;
+        background: #111;
+        color: #fff;
+        border: 1px solid #111;
+    }
+
+    .method-pill.muted {
+        background: #f1f3f5;
+        color: #343a40;
+        border-color: #dee2e6;
+    }
+
+    .account-tabs {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .tab-button {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-align: left;
+        border: 1px solid transparent;
+        background: transparent;
+        color: #495057;
+        border-radius: 10px;
+        padding: 0 12px;
+        min-height: 44px;
+        font-weight: 500;
+        transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    }
+
+    .tab-button:hover {
+        background: #f6f7f8;
+    }
+
+    .tab-button.active {
+        background: #f1f3f5;
+        color: #111;
+        border-left: 3px solid #111;
+        border-radius: 10px 10px 10px 10px;
+        padding-left: 9px;
+        font-weight: 700;
+    }
+
+    .nav-icon {
+        width: 16px;
+        height: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 16px;
+    }
+
+    .nav-icon svg {
+        width: 16px;
+        height: 16px;
+        display: block;
+    }
+
+    .account-sidebar-footer {
+        margin-top: 4px;
+        padding-top: 12px;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .logout-form {
+        margin: 0;
+    }
+
+    .logout-button {
+        width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        border: 1px solid rgba(17, 17, 17, 0.45);
+        background: transparent;
+        color: #111;
+        font-weight: 600;
+        transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+
+    .logout-button svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .logout-button:hover {
+        background: #fff3f3;
+        border-color: rgba(220, 53, 69, 0.6);
+        color: #c62828;
+    }
+
+    .account-logout-header {
+        display: none;
+    }
+
+    .account-logout-header .logout-button {
+        width: 40px;
+        min-width: 40px;
+        padding: 0;
+        border-radius: 10px;
+    }
+
+    .account-logout-header .logout-button span {
+        display: none;
+    }
+
+    .section-block {
+        border: 1px solid #eef0f2;
+        border-radius: 14px;
+        padding: 1rem;
+        background: #fcfcfc;
+    }
+
+    .danger-zone {
+        border-top: 1px solid #ececec;
+        padding-top: 1.5rem;
+    }
+
+    .alert {
+        border-radius: 14px;
+    }
+
+    .form-control,
+    .input-group .btn,
+    .btn {
+        min-height: 44px;
+    }
+
+    .form-control {
+        border-radius: 10px;
+        border-color: #dfe3e8;
+    }
+
+    .form-control:focus,
+    .btn:focus-visible,
+    .tab-button:focus-visible {
+        box-shadow: 0 0 0 0.2rem rgba(17, 17, 17, 0.12);
+        outline: none;
+    }
+
+    .empty-state-icon {
+        width: 76px;
+        height: 76px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #f5f5f5;
+        color: #111;
+    }
+
+    .empty-state-icon svg {
+        width: 38px;
+        height: 38px;
+    }
+
+    @@media (max-width: 991.98px) {
+        .account-shell .container {
+            padding-top: 12px !important;
+            padding-bottom: 12px !important;
+        }
+
+        .account-shell .row {
+            --bs-gutter-x: 12px;
+            --bs-gutter-y: 12px;
+        }
+
+        .sidebar-card {
+            padding: 12px 16px 16px;
+            position: static;
+            gap: 10px;
+        }
+
+        .account-user-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .account-user-meta {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .account-user-name {
+            font-size: 15px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .account-user-email {
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            min-height: 40px;
+            flex-basis: 40px;
+            font-size: 0.85rem;
+        }
+
+        .account-user-chip {
+            display: none;
+        }
+
+        .account-logout-header {
+            display: inline-flex;
+            align-self: center;
+        }
+
+        .account-sidebar-footer {
+            display: none;
+        }
+
+        .account-tabs {
+            display: flex;
+            flex-direction: row;
+            gap: 8px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            flex-wrap: nowrap;
+            scroll-snap-type: x proximity;
+            padding-bottom: 2px;
+        }
+
+        .account-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-button {
+            flex: 0 0 auto;
+            width: auto;
+            min-height: 40px;
+            padding: 0 16px;
+            border-radius: 999px;
+            font-size: 14px;
+            background: #f1f3f5;
+            color: #212529;
+            border: 1px solid transparent;
+            scroll-snap-align: start;
+        }
+
+        .tab-button:hover {
+            background: #e9ecef;
+        }
+
+        .tab-button.active {
+            background: #111;
+            color: #fff;
+            border-left: 0;
+            padding-left: 16px;
+        }
+
+        .tab-button .nav-icon {
+            display: none;
+        }
+    }
+</style>
+
+@code {
+    private const string DefaultTab = "profile";
+    private readonly Dictionary<string, string> Tabs = new()
+    {
+        ["profile"] = "Profile",
+        ["address"] = "Address",
+        ["security"] = "Security",
+        ["orders"] = "Orders"
+    };
+
+    private ApplicationUser? CurrentUser;
+    private string ActiveTab = DefaultTab;
+    private string DisplayName = "Customer";
+    private string Email = string.Empty;
+    private string Initials = "C";
+    private string? MemberSinceText;
+    private string SignInMethod = "Email";
+    private bool HasPassword;
+    private bool IsAdmin;
+    private string? AlertMessage;
+    private string AlertType = "success";
+    private CancellationTokenSource? AlertCancellationTokenSource;
+    private bool IsSavingProfile;
+    private bool IsSavingAddress;
+    private bool IsSavingPassword;
+    private bool IsSettingPassword;
+    private bool IsDeletingAccount;
+    private bool ShowCurrentPassword;
+    private bool ShowNewPassword;
+    private bool ShowConfirmPassword;
+    private bool ShowSetPassword;
+    private bool ShowSetConfirmPassword;
+
+    private ProfileFormModel ProfileModel { get; set; } = new();
+    private AddressFormModel AddressModel { get; set; } = new();
+    private PasswordChangeFormModel PasswordChangeModel { get; set; } = new();
+    private SetPasswordFormModel SetPasswordModel { get; set; } = new();
+    private DeleteAccountFormModel DeleteAccountModel { get; set; } = new();
 
     protected override async Task OnInitializedAsync()
     {
-        if (AuthenticationStateTask is null)
+        await LoadUserAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadUserAsync();
+        SyncTabFromQuery();
+    }
+
+    private void SyncTabFromQuery()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        var tabValue = query.TryGetValue("tab", out var tab) ? tab.ToString() : DefaultTab;
+        ActiveTab = Tabs.Any(item => item.Key == tabValue) ? tabValue : DefaultTab;
+
+        var statusValue = query.TryGetValue("status", out var status) ? status.ToString() : null;
+        if (!string.IsNullOrWhiteSpace(statusValue))
+        {
+            var statusMessage = GetStatusMessage(statusValue);
+            if (!string.IsNullOrWhiteSpace(statusMessage))
+            {
+                AlertType = statusValue is "profile_saved" or "address_saved" or "password_changed" or "password_set" or "account_deleted" ? "success" : "danger";
+                AlertMessage = statusMessage;
+                return;
+            }
+        }
+
+        AlertMessage = null;
+    }
+
+    private async Task LoadUserAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUser = await UserManager.GetUserAsync(authState.User);
+        if (CurrentUser is null)
         {
             return;
         }
 
-        var authState = await AuthenticationStateTask;
-        var user = authState.User;
+        DisplayName = !string.IsNullOrWhiteSpace(CurrentUser.FullName) ? CurrentUser.FullName : CurrentUser.Email ?? "Customer";
+        Email = CurrentUser.Email ?? string.Empty;
+        Initials = GetInitials(DisplayName);
+        HasPassword = await UserManager.HasPasswordAsync(CurrentUser);
+        var logins = await UserManager.GetLoginsAsync(CurrentUser);
+        SignInMethod = logins.Any(login => string.Equals(login.LoginProvider, "Google", StringComparison.OrdinalIgnoreCase)) ? "Google" : "Email";
+        IsAdmin = authState.User.IsInRole("Admin");
 
-        FullName = user.FindFirst("FullName")?.Value ?? user.Identity?.Name ?? "Customer";
-        Email = user.Identity?.Name ?? string.Empty;
+        ProfileModel = new ProfileFormModel
+        {
+            FullName = CurrentUser.FullName ?? string.Empty,
+            PhoneNumber = CurrentUser.PhoneNumber ?? string.Empty
+        };
+
+        AddressModel = new AddressFormModel
+        {
+            AddressLine1 = CurrentUser.AddressLine1 ?? string.Empty,
+            AddressLine2 = CurrentUser.AddressLine2 ?? string.Empty,
+            City = CurrentUser.City ?? string.Empty,
+            State = CurrentUser.State ?? string.Empty,
+            PostalCode = CurrentUser.PostalCode ?? string.Empty,
+            Country = string.IsNullOrWhiteSpace(CurrentUser.Country) ? "Nigeria" : CurrentUser.Country
+        };
+
+        MemberSinceText = null;
+    }
+
+    private void DismissAlert()
+    {
+        AlertCancellationTokenSource?.Cancel();
+        AlertMessage = null;
+    }
+
+    private async Task ShowStatusAlert(string message, string type = "success")
+    {
+        AlertCancellationTokenSource?.Cancel();
+        AlertCancellationTokenSource = new CancellationTokenSource();
+
+        AlertMessage = message;
+        AlertType = type;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(4), AlertCancellationTokenSource.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        AlertMessage = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static string GetInitials(string value)
+    {
+        var words = value.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (words.Length == 0)
+        {
+            return "C";
+        }
+
+        if (words.Length == 1)
+        {
+            return words[0].Substring(0, 1).ToUpperInvariant();
+        }
+
+        return string.Concat(words.Take(2).Select(w => char.ToUpperInvariant(w[0])));
+    }
+
+    private void GoToTab(string tab)
+    {
+        var target = Tabs.Any(item => item.Key == tab) ? tab : DefaultTab;
+        ActiveTab = target;
+        NavigationManager.NavigateTo($"/account?tab={target}");
+    }
+
+    private static string GetStatusMessage(string statusCode)
+    {
+        return statusCode switch
+        {
+            "profile_saved" => "Profile updated successfully.",
+            "address_saved" => "Address saved successfully.",
+            "password_changed" => "Password changed successfully.",
+            "password_set" => "Password set successfully.",
+            "account_deleted" => "Your account has been deleted.",
+            "profile_invalid" => "Please enter a valid name.",
+            "phone_invalid" => "Please enter a valid phone number.",
+            "address_incomplete" => "Please provide address line 1, city, and state.",
+            "passwords_do_not_match" => "Passwords do not match.",
+            "bad_password" => "The current password is incorrect.",
+            "delete_confirm_required" => "Type DELETE to confirm account deletion.",
+            "admin_protected" => "Admin accounts cannot be deleted.",
+            "password_set_failed" => "We could not set the password. Please try again.",
+            "delete_failed" => "We could not delete the account. Please try again.",
+            _ => "Something went wrong. Please try again."
+        };
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        if (CurrentUser is null)
+        {
+            return;
+        }
+
+        IsSavingProfile = true;
+        try
+        {
+            CurrentUser.FullName = ProfileModel.FullName.Trim();
+            CurrentUser.PhoneNumber = string.IsNullOrWhiteSpace(ProfileModel.PhoneNumber) ? null : ProfileModel.PhoneNumber.Trim();
+
+            var result = await UserManager.UpdateAsync(CurrentUser);
+            if (!result.Succeeded)
+            {
+                await ShowStatusAlert("We could not save your profile. Please try again.", "danger");
+                return;
+            }
+
+            DisplayName = string.IsNullOrWhiteSpace(CurrentUser.FullName) ? Email : CurrentUser.FullName;
+            Initials = GetInitials(DisplayName);
+            await ShowStatusAlert("Profile updated successfully.", "success");
+            NavigationManager.NavigateTo($"/account?tab=profile&status=profile_saved");
+        }
+        finally
+        {
+            IsSavingProfile = false;
+        }
+    }
+
+    private async Task SaveAddressAsync()
+    {
+        if (CurrentUser is null)
+        {
+            return;
+        }
+
+        IsSavingAddress = true;
+        try
+        {
+            CurrentUser.AddressLine1 = string.IsNullOrWhiteSpace(AddressModel.AddressLine1) ? null : AddressModel.AddressLine1.Trim();
+            CurrentUser.AddressLine2 = string.IsNullOrWhiteSpace(AddressModel.AddressLine2) ? null : AddressModel.AddressLine2.Trim();
+            CurrentUser.City = string.IsNullOrWhiteSpace(AddressModel.City) ? null : AddressModel.City.Trim();
+            CurrentUser.State = string.IsNullOrWhiteSpace(AddressModel.State) ? null : AddressModel.State.Trim();
+            CurrentUser.PostalCode = string.IsNullOrWhiteSpace(AddressModel.PostalCode) ? null : AddressModel.PostalCode.Trim();
+            CurrentUser.Country = string.IsNullOrWhiteSpace(AddressModel.Country) ? "Nigeria" : AddressModel.Country.Trim();
+
+            var result = await UserManager.UpdateAsync(CurrentUser);
+            if (!result.Succeeded)
+            {
+                await ShowStatusAlert("We could not save your address. Please try again.", "danger");
+                return;
+            }
+
+            await ShowStatusAlert("Address saved successfully.", "success");
+            NavigationManager.NavigateTo($"/account?tab=address&status=address_saved");
+        }
+        finally
+        {
+            IsSavingAddress = false;
+        }
+    }
+
+    private async Task HandleChangePasswordAsync()
+    {
+        if (CurrentUser is null)
+        {
+            return;
+        }
+
+        IsSavingPassword = true;
+        try
+        {
+            var result = await UserManager.ChangePasswordAsync(CurrentUser, PasswordChangeModel.CurrentPassword, PasswordChangeModel.NewPassword);
+            if (!result.Succeeded)
+            {
+                await ShowStatusAlert("The current password is incorrect or the new password is invalid.", "danger");
+                return;
+            }
+
+            await UserManager.UpdateAsync(CurrentUser);
+            await ShowStatusAlert("Password changed successfully.", "success");
+            NavigationManager.NavigateTo($"/account?tab=security&status=password_changed");
+        }
+        finally
+        {
+            IsSavingPassword = false;
+        }
+    }
+
+    private async Task HandleSetPasswordAsync()
+    {
+        if (CurrentUser is null)
+        {
+            return;
+        }
+
+        IsSettingPassword = true;
+        try
+        {
+            var result = await UserManager.AddPasswordAsync(CurrentUser, SetPasswordModel.NewPassword);
+            if (!result.Succeeded)
+            {
+                await ShowStatusAlert("We could not set the password. Please check the password rules and try again.", "danger");
+                return;
+            }
+
+            HasPassword = true;
+            await ShowStatusAlert("Password set successfully.", "success");
+            NavigationManager.NavigateTo($"/account?tab=security&status=password_set");
+        }
+        finally
+        {
+            IsSettingPassword = false;
+        }
+    }
+
+    private async Task SubmitDeleteAccountAsync()
+    {
+        if (CurrentUser is null || IsAdmin)
+        {
+            return;
+        }
+
+        IsDeletingAccount = true;
+        try
+        {
+            var result = await UserManager.DeleteAsync(CurrentUser);
+            if (!result.Succeeded)
+            {
+                AlertType = "danger";
+                AlertMessage = "We could not delete the account. Please try again.";
+                return;
+            }
+
+            NavigationManager.NavigateTo("/?status=account_deleted");
+        }
+        finally
+        {
+            IsDeletingAccount = false;
+        }
+    }
+
+    private void ToggleVisibility(string fieldName)
+    {
+        if (fieldName == nameof(PasswordChangeModel.CurrentPassword))
+        {
+            ShowCurrentPassword = !ShowCurrentPassword;
+            return;
+        }
+
+        if (fieldName == nameof(PasswordChangeModel.NewPassword))
+        {
+            ShowNewPassword = !ShowNewPassword;
+            return;
+        }
+
+        if (fieldName == nameof(PasswordChangeModel.ConfirmPassword))
+        {
+            ShowConfirmPassword = !ShowConfirmPassword;
+            return;
+        }
+
+        if (fieldName == nameof(SetPasswordModel.NewPassword))
+        {
+            ShowSetPassword = !ShowSetPassword;
+            return;
+        }
+
+        if (fieldName == nameof(SetPasswordModel.ConfirmPassword))
+        {
+            ShowSetConfirmPassword = !ShowSetConfirmPassword;
+        }
+    }
+
+    private sealed class ProfileFormModel
+    {
+        [Required]
+        [StringLength(100)]
+        public string FullName { get; set; } = string.Empty;
+
+        [Phone]
+        [StringLength(20)]
+        public string PhoneNumber { get; set; } = string.Empty;
+    }
+
+    private sealed class AddressFormModel : IValidatableObject
+    {
+        [StringLength(120)]
+        public string AddressLine1 { get; set; } = string.Empty;
+
+        [StringLength(120)]
+        public string AddressLine2 { get; set; } = string.Empty;
+
+        [StringLength(80)]
+        public string City { get; set; } = string.Empty;
+
+        [StringLength(80)]
+        public string State { get; set; } = string.Empty;
+
+        [StringLength(20)]
+        public string PostalCode { get; set; } = string.Empty;
+
+        [StringLength(80)]
+        public string Country { get; set; } = "Nigeria";
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            var fields = new[] { AddressLine1, AddressLine2, City, State, PostalCode, Country };
+            var hasAnyValue = fields.Any(value => !string.IsNullOrWhiteSpace(value));
+            if (!hasAnyValue)
+            {
+                yield break;
+            }
+
+            if (string.IsNullOrWhiteSpace(AddressLine1))
+            {
+                yield return new ValidationResult("Address line 1 is required.", new[] { nameof(AddressLine1) });
+            }
+
+            if (string.IsNullOrWhiteSpace(City))
+            {
+                yield return new ValidationResult("City is required.", new[] { nameof(City) });
+            }
+
+            if (string.IsNullOrWhiteSpace(State))
+            {
+                yield return new ValidationResult("State is required.", new[] { nameof(State) });
+            }
+        }
+    }
+
+    private sealed class PasswordChangeFormModel
+    {
+        [Required]
+        public string CurrentPassword { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(100, MinimumLength = 6)]
+        public string NewPassword { get; set; } = string.Empty;
+
+        [Required]
+        [Compare(nameof(NewPassword))]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+
+    private sealed class SetPasswordFormModel
+    {
+        [Required]
+        [StringLength(100, MinimumLength = 6)]
+        public string NewPassword { get; set; } = string.Empty;
+
+        [Required]
+        [Compare(nameof(NewPassword))]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+
+    private sealed class DeleteAccountFormModel
+    {
+        [Required]
+        public string ConfirmText { get; set; } = string.Empty;
+
+        [Required]
+        public string CurrentPassword { get; set; } = string.Empty;
     }
 }
