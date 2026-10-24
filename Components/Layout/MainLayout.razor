@@ -1,11 +1,13 @@
 ﻿@inherits LayoutComponentBase
 
-<div>
+<div class="d-flex flex-column min-vh-100">
     <SiteNav />
 
-    <main class="container mt-4">
+    <main class="container mt-4 flex-grow-1">
         @Body
     </main>
+
+    <SiteFooter />
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
