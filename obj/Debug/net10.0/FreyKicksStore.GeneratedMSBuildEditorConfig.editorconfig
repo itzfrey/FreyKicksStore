@@ -107,6 +107,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQcm9kdWN0RGV0YWlsLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Users/Frey/Desktop/FreyKicksStore/FreyKicksStore/Components/Pages/Search.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xTZWFyY2gucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Users/Frey/Desktop/FreyKicksStore/FreyKicksStore/Components/Pages/Shop.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xTaG9wLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 

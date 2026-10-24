@@ -1,7 +1,12 @@
 @using FreyKicksStore.Models
 
 <a href="/product/@Product.Id" class="text-decoration-none text-reset">
-    <div class="card h-100">
+    <div class="card h-100 position-relative overflow-hidden">
+        @if (IsSoldOut)
+        {
+            <span class="badge bg-secondary position-absolute top-0 end-0 m-2 rounded-pill px-2 py-1">Sold out</span>
+        }
+
         @if (!string.IsNullOrEmpty(FirstImage))
         {
             <img src="@FirstImage" class="card-img-top" alt="@Product.Name" style="height:220px;object-fit:cover;" />
@@ -28,4 +33,7 @@
 
     private decimal StartingPrice =>
         Product.Variants.Select(v => v.Price).DefaultIfEmpty(0).Min();
+
+    private bool IsSoldOut =>
+        Product.Variants.Count > 0 && Product.Variants.All(v => v.Stock <= 0);
 }

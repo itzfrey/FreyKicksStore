@@ -1,0 +1,1222 @@
+@page "/search"
+@rendermode InteractiveServer
+@using FreyKicksStore.Components.Shared
+@using FreyKicksStore.Models
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.EntityFrameworkCore
+@inject FreyKicksStore.Data.ApplicationDbContext DbContext
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@inject ILogger<Search> Logger
+
+<PageTitle>Search</PageTitle>
+
+<div class="search-shell">
+    <div class="container py-4 py-lg-5">
+        <div class="search-panel">
+            <div class="search-input-wrap">
+                <svg viewBox="0 0 24 24" class="search-input-icon" aria-hidden="true">
+                    <circle cx="11" cy="11" r="6.5"></circle>
+                    <path d="M16 16L21 21"></path>
+                </svg>
+
+                <input id="search-box"
+                       type="text"
+                       class="search-input"
+                       value="@QueryText"
+                       placeholder="Search Frey Kicks"
+                       autocomplete="off"
+                       spellcheck="false"
+                       @oninput="OnQueryChanged"
+                       @onkeydown="HandleKeyDown" />
+
+                @if (!string.IsNullOrWhiteSpace(QueryText))
+                {
+                    <button type="button" class="search-clear" aria-label="Clear search" @onclick="ClearQuery">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 6L18 18M18 6L6 18"></path>
+                        </svg>
+                    </button>
+                }
+            </div>
+
+            <div class="search-controls d-none d-lg-flex">
+                <div class="chip-row">
+                    @foreach (var category in CategoryOptions)
+                    {
+                        <button type="button" class="chip @(ActiveCategory == category ? "chip-active" : string.Empty)" @onclick="() => ToggleCategory(category)">
+                            @category
+                        </button>
+                    }
+                </div>
+
+                <div class="control-row">
+                    <label class="field-wrap">
+                        <span>Gender</span>
+                        <select class="form-select" value="@SelectedGenderValue" @onchange="OnGenderChanged">
+                            <option value="">All</option>
+                            <option value="Men">Men</option>
+                            <option value="Women">Women</option>
+                            <option value="Unisex">Unisex</option>
+                        </select>
+                    </label>
+
+                    <label class="check-wrap">
+                        <input type="checkbox" checked="@InStockOnly" @onchange="OnInStockChanged" />
+                        <span>In stock only</span>
+                    </label>
+
+                    <label class="field-wrap small-field">
+                        <span>Sort</span>
+                        <select class="form-select" value="@SortMode" @onchange="OnSortChanged">
+                            <option value="relevance">Relevance</option>
+                            <option value="price-low">Price: low to high</option>
+                            <option value="price-high">Price: high to low</option>
+                            <option value="newest">Newest</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
+
+            <div class="d-lg-none search-mobile-bar">
+                <button type="button" class="mobile-filter-btn" @onclick="ToggleFilterSheet">
+                    Filters
+                    @if (HasActiveFilters)
+                    {
+                        <span class="mobile-filter-count">@ActiveFilters.Count</span>
+                    }
+                </button>
+            </div>
+
+            @if (HasActiveFilters)
+            {
+                <div class="active-filter-row" aria-label="Active filters">
+                    @foreach (var filter in ActiveFilters)
+                    {
+                        <button type="button" class="active-filter" @onclick="() => RemoveFilter(filter)">
+                            <span>@filter.Label</span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L18 18M18 6L6 18"></path></svg>
+                        </button>
+                    }
+
+                    <button type="button" class="clear-all" @onclick="ClearAllFilters">Clear all</button>
+                </div>
+            }
+        </div>
+
+        @if (IsLoading)
+        {
+            <div class="results-block">
+                <div class="skeleton-meta"></div>
+                <div class="product-grid">
+                    @for (var i = 0; i < 8; i++)
+                    {
+                        <div class="skeleton-card">
+                            <div class="skeleton-image"></div>
+                            <div class="skeleton-line short"></div>
+                            <div class="skeleton-line"></div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else if (!HasSearchText && !HasFilterSelection)
+        {
+            <div class="empty-state">
+                <h2>Search Frey Kicks</h2>
+                <div class="chip-row default-chip-row">
+                    @foreach (var category in PopularCategories)
+                    {
+                        <button type="button" class="chip chip-soft" @onclick="() => ToggleCategory(category)">@category</button>
+                    }
+                </div>
+                <div class="section-heading">
+                    <h3>New arrivals</h3>
+                </div>
+            </div>
+
+            @if (NewArrivals.Count > 0)
+            {
+                <div class="product-grid results-grid">
+                    @foreach (var product in NewArrivals)
+                    {
+                        <ProductCard Product="product" />
+                    }
+                </div>
+            }
+        }
+        else if (SearchError)
+        {
+            <div class="empty-state results-empty">
+                <h2>Something went wrong searching.</h2>
+                <p>Please try again.</p>
+                <button type="button" class="btn btn-dark" @onclick="RetrySearch">Try again</button>
+            </div>
+        }
+        else if (Results.Count == 0)
+        {
+            <div class="empty-state results-empty">
+                @if (HasSearchText)
+                {
+                    <h2>No results for "@QueryText"</h2>
+                    <p>Try checking your spelling or use fewer words.</p>
+                }
+                else
+                {
+                    <h2>No products found</h2>
+                    <p>Try removing a filter.</p>
+                }
+
+                @if (HasFilterSelection || HasSearchText)
+                {
+                    <button type="button" class="btn btn-dark" @onclick="ClearAllFilters">Clear filters</button>
+                }
+            </div>
+
+            @if (NewArrivals.Count > 0)
+            {
+                <div class="section-heading mt-4">
+                    <h3>New arrivals</h3>
+                </div>
+                <div class="product-grid results-grid">
+                    @foreach (var product in NewArrivals)
+                    {
+                        <ProductCard Product="product" />
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            <div class="results-summary" aria-live="polite">
+                <span>@GetResultsSummaryText(Results.Count)</span>
+            </div>
+
+            <div class="results-count">
+                Showing @Math.Min(VisibleCount, Results.Count) of @Results.Count
+            </div>
+
+            <div class="product-grid results-grid">
+                @foreach (var product in VisibleResults)
+                {
+                    <ProductCard Product="product" />
+                }
+            </div>
+
+            @if (Results.Count > VisibleResults.Count)
+            {
+                <div class="show-more-wrap">
+                    <button type="button" class="btn btn-outline-dark" @onclick="ShowMoreResults">Show more</button>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@if (ShowFilterSheet)
+{
+    <div class="sheet-backdrop" @onclick="ToggleFilterSheet"></div>
+    <div class="bottom-sheet">
+        <div class="sheet-header">
+            <h4>Filters</h4>
+            <button type="button" class="sheet-close" @onclick="ToggleFilterSheet" aria-label="Close filters">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L18 18M18 6L6 18"></path></svg>
+            </button>
+        </div>
+
+        <div class="sheet-body">
+            <div class="mb-3">
+                <label class="sheet-label">Gender</label>
+                <select class="form-select" value="@SelectedGenderValue" @onchange="OnGenderChanged">
+                    <option value="">All</option>
+                    <option value="Men">Men</option>
+                    <option value="Women">Women</option>
+                    <option value="Unisex">Unisex</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="sheet-label">Category</label>
+                <div class="sheet-chip-list">
+                    @foreach (var category in CategoryOptions)
+                    {
+                        <button type="button" class="chip @(ActiveCategory == category ? "chip-active" : string.Empty)" @onclick="() => ToggleCategory(category)">
+                            @category
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="sheet-label">Sort</label>
+                <select class="form-select" value="@SortMode" @onchange="OnSortChanged">
+                    <option value="relevance">Relevance</option>
+                    <option value="price-low">Price: low to high</option>
+                    <option value="price-high">Price: high to low</option>
+                    <option value="newest">Newest</option>
+                </select>
+            </div>
+
+            <label class="check-wrap sheet-check">
+                <input type="checkbox" checked="@InStockOnly" @onchange="OnInStockChanged" />
+                <span>In stock only</span>
+            </label>
+        </div>
+
+        <div class="sheet-footer">
+            <button type="button" class="btn btn-outline-dark flex-fill" @onclick="ClearAllFilters">Clear all</button>
+            <button type="button" class="btn btn-dark flex-fill" @onclick="ToggleFilterSheet">Apply</button>
+        </div>
+    </div>
+}
+
+<style>
+    .search-shell {
+        background: #f8f9fa;
+        min-height: calc(100vh - 80px);
+        color: #111827;
+    }
+
+    .search-panel {
+        background: #fff;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 24px;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+        padding: 1.2rem 1.2rem 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .search-input-wrap {
+        position: relative;
+        height: 52px;
+        display: flex;
+        align-items: center;
+    }
+
+    .search-input-icon {
+        position: absolute;
+        left: 16px;
+        width: 20px;
+        height: 20px;
+        fill: none;
+        stroke: #495057;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .search-input {
+        width: 100%;
+        height: 52px;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        border-radius: 999px;
+        background: #f8f9fa;
+        padding: 0 48px 0 46px;
+        font-size: 1.05rem;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .search-input:focus {
+        border-color: rgba(15, 23, 42, 0.3);
+        box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.05);
+    }
+
+    .search-clear {
+        position: absolute;
+        right: 12px;
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: transparent;
+        border-radius: 50%;
+        color: #495057;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .search-clear:hover {
+        background: rgba(15, 23, 42, 0.06);
+    }
+
+    .search-clear svg {
+        width: 16px;
+        height: 16px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+    }
+
+    .search-controls {
+        margin-top: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+    }
+
+    .chip {
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        background: #fff;
+        color: #1f2937;
+        border-radius: 999px;
+        padding: 0.5rem 0.9rem;
+        font-size: 0.9rem;
+        transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .chip:hover {
+        border-color: rgba(15, 23, 42, 0.2);
+        transform: translateY(-1px);
+    }
+
+    .chip-active {
+        background: #111827;
+        color: #fff;
+        border-color: #111827;
+    }
+
+    .chip-soft {
+        background: #f3f4f6;
+    }
+
+    .control-row {
+        display: flex;
+        align-items: end;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .field-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        min-width: 180px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .field-wrap .form-select {
+        min-height: 44px;
+        border-radius: 12px;
+        border-color: rgba(15, 23, 42, 0.12);
+        color: #111827;
+    }
+
+    .small-field {
+        min-width: 170px;
+    }
+
+    .check-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        min-height: 44px;
+        padding: 0.65rem 0.8rem;
+        border-radius: 12px;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        background: #fff;
+        color: #1f2937;
+        font-size: 0.92rem;
+    }
+
+    .check-wrap input {
+        accent-color: #111827;
+    }
+
+    .mobile-filter-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: #fff;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        border-radius: 999px;
+        padding: 0.6rem 1rem;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .mobile-filter-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #111827;
+        color: #fff;
+        font-size: 0.72rem;
+        padding: 0 0.35rem;
+    }
+
+    .active-filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.7rem;
+        margin-top: 1rem;
+    }
+
+    .active-filter {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        background: #fff;
+        border-radius: 999px;
+        padding: 0.5rem 0.75rem;
+        color: #1f2937;
+    }
+
+    .active-filter svg {
+        width: 12px;
+        height: 12px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+    }
+
+    .clear-all {
+        border: none;
+        background: transparent;
+        color: #111827;
+        text-decoration: underline;
+        text-underline-offset: 0.2rem;
+        padding: 0;
+    }
+
+    .results-block {
+        margin-top: 0.5rem;
+    }
+
+    .skeleton-meta {
+        width: 180px;
+        height: 24px;
+        border-radius: 12px;
+        background: linear-gradient(90deg, #eef1f4 25%, #f5f7f9 50%, #eef1f4 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.4s linear infinite;
+        margin-bottom: 1rem;
+    }
+
+    .product-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.25rem;
+    }
+
+    @@media (min-width: 768px) {
+        .product-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @@media (min-width: 1200px) {
+        .product-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
+
+    .skeleton-card {
+        background: #fff;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    }
+
+    .skeleton-image {
+        height: 220px;
+        background: linear-gradient(90deg, #eef1f4 25%, #f5f7f9 50%, #eef1f4 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.4s linear infinite;
+    }
+
+    .skeleton-line {
+        height: 14px;
+        border-radius: 999px;
+        margin: 12px 16px;
+        background: linear-gradient(90deg, #eef1f4 25%, #f5f7f9 50%, #eef1f4 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.4s linear infinite;
+    }
+
+    .skeleton-line.short {
+        width: 50%;
+    }
+
+    .empty-state {
+        padding-top: 0.5rem;
+    }
+
+    .empty-state h2 {
+        font-size: clamp(2rem, 3vw, 3rem);
+        letter-spacing: -0.04em;
+        margin-bottom: 1rem;
+    }
+
+    .default-chip-row {
+        margin: 1rem 0 2rem;
+    }
+
+    .section-heading {
+        margin: 1.25rem 0 1rem;
+    }
+
+    .section-heading h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+
+    .results-summary,
+    .results-count {
+        margin-bottom: 0.75rem;
+        color: #495057;
+    }
+
+    .results-summary {
+        font-size: 0.96rem;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .results-grid {
+        margin-top: 0.5rem;
+    }
+
+    .show-more-wrap {
+        display: flex;
+        justify-content: center;
+        margin-top: 1.5rem;
+    }
+
+    .sheet-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.38);
+        z-index: 1040;
+    }
+
+    .bottom-sheet {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1050;
+        background: #fff;
+        border-top-left-radius: 24px;
+        border-top-right-radius: 24px;
+        box-shadow: 0 -20px 42px rgba(15, 23, 42, 0.14);
+        padding: 1rem 1rem 0.75rem;
+    }
+
+    .sheet-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .sheet-header h4 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+
+    .sheet-close {
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 50%;
+        background: #f3f4f6;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sheet-close svg {
+        width: 18px;
+        height: 18px;
+        stroke: #111827;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+    }
+
+    .sheet-body {
+        padding-top: 1rem;
+    }
+
+    .sheet-label {
+        display: block;
+        margin-bottom: 0.45rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .sheet-chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .sheet-check {
+        width: 100%;
+        justify-content: space-between;
+        padding-right: 0.9rem;
+    }
+
+    .sheet-footer {
+        display: flex;
+        gap: 0.75rem;
+        padding-top: 0.85rem;
+        border-top: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    @@keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+
+    @@media (max-width: 991.98px) {
+        .search-panel {
+            padding: 1rem;
+        }
+    }
+</style>
+
+@code {
+    private int SearchVersion;
+    private CancellationTokenSource? SearchCancellation;
+    private bool IsLoading;
+    private bool ShowFilterSheet;
+    private bool SearchError;
+    private int VisibleCount = 48;
+    private List<Product> Results = new();
+    private List<Product> NewArrivals = new();
+
+    private string QueryText = string.Empty;
+    private string? ActiveCategory;
+    private Gender? ActiveGender;
+    private bool InStockOnly;
+    private string SortMode = "relevance";
+
+    private List<Product> VisibleResults => Results.Take(VisibleCount).ToList();
+
+    private List<string> CategoryOptions => Enum.GetNames<ProductCategory>()
+        .Where(name => name != nameof(ProductCategory.General))
+        .OrderBy(name => name)
+        .ToList();
+
+    private readonly List<string> PopularCategories = new()
+    {
+        nameof(ProductCategory.Sneakers),
+        nameof(ProductCategory.Canvas),
+        nameof(ProductCategory.Slides),
+        nameof(ProductCategory.Corporate)
+    };
+
+    private bool HasSearchText => !string.IsNullOrWhiteSpace(QueryText);
+    private bool HasFilterSelection => !string.IsNullOrWhiteSpace(ActiveCategory) || ActiveGender.HasValue || InStockOnly;
+    private bool HasActiveFilters => HasSearchText || HasFilterSelection;
+
+    private string SelectedGenderValue => ActiveGender?.ToString() ?? string.Empty;
+
+    private List<(string Label, string Key)> ActiveFilters
+    {
+        get
+        {
+            var filters = new List<(string Label, string Key)>();
+
+            if (!string.IsNullOrWhiteSpace(QueryText))
+            {
+                filters.Add((QueryText.Trim(), "query"));
+            }
+
+            if (!string.IsNullOrWhiteSpace(ActiveCategory))
+            {
+                filters.Add((ActiveCategory, "category"));
+            }
+
+            if (ActiveGender.HasValue)
+            {
+                filters.Add((ActiveGender.Value.ToString(), "gender"));
+            }
+
+            if (InStockOnly)
+            {
+                filters.Add(("In stock", "stock"));
+            }
+
+            return filters;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        SyncFromQueryString();
+        await LoadNewArrivalsAsync();
+        await TriggerSearchAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("eval", "document.getElementById('search-box')?.focus();");
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private void SyncFromQueryString()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        QueryText = query.TryGetValue("q", out var qValue) ? qValue.ToString().Trim() : string.Empty;
+        ActiveCategory = query.TryGetValue("category", out var categoryValue) && !string.IsNullOrWhiteSpace(categoryValue.ToString()) ? categoryValue.ToString() : null;
+
+        if (query.TryGetValue("gender", out var genderValue) && Enum.TryParse<Gender>(genderValue.ToString(), true, out var gender))
+        {
+            ActiveGender = gender;
+        }
+        else
+        {
+            ActiveGender = null;
+        }
+
+        InStockOnly = query.TryGetValue("stock", out var stockValue) && stockValue.ToString() == "1";
+
+        if (query.TryGetValue("sort", out var sortValue) && !string.IsNullOrWhiteSpace(sortValue.ToString()) &&
+            (sortValue.ToString() == "relevance" || sortValue.ToString() == "price-low" || sortValue.ToString() == "price-high" || sortValue.ToString() == "newest"))
+        {
+            SortMode = sortValue.ToString();
+        }
+        else
+        {
+            SortMode = "relevance";
+        }
+    }
+
+    private async Task TriggerSearchAsync()
+    {
+        SearchCancellation?.Cancel();
+        SearchCancellation?.Dispose();
+        SearchCancellation = new CancellationTokenSource();
+
+        var requestVersion = ++SearchVersion;
+        var token = SearchCancellation.Token;
+
+        try
+        {
+            await Task.Delay(300, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
+        await ExecuteSearchAsync(requestVersion, token);
+    }
+
+    private async Task ExecuteSearchAsync(int requestVersion, CancellationToken token)
+    {
+        if (!HasSearchText && !HasFilterSelection)
+        {
+            Results = new();
+            SearchError = false;
+            VisibleCount = 48;
+            IsLoading = false;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        IsLoading = true;
+        SearchError = false;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var query = BuildBaseQuery();
+            if (HasSearchText)
+            {
+                var terms = SplitWords(QueryText);
+                foreach (var term in terms)
+                {
+                    var termPattern = EscapeLikePattern(term);
+                    var matchingCategories = Enum.GetValues<ProductCategory>()
+                        .Where(category => category.ToString().Contains(term, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                    var matchingGenders = Enum.GetValues<Gender>()
+                        .Where(gender => gender.ToString().Contains(term, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                    query = query.Where(p =>
+                        EF.Functions.Like(p.Name, $"%{termPattern}%", "\\") ||
+                        (p.Description != null && EF.Functions.Like(p.Description, $"%{termPattern}%", "\\")) ||
+                        p.Variants.Any(v =>
+                            (v.Sku != null && EF.Functions.Like(v.Sku, $"%{termPattern}%", "\\")) ||
+                            (v.Color != null && EF.Functions.Like(v.Color, $"%{termPattern}%", "\\"))) ||
+                        matchingCategories.Contains(p.Category) ||
+                        matchingGenders.Contains(p.Gender));
+                }
+            }
+
+            var matches = await query.AsNoTracking().ToListAsync(token);
+            if (requestVersion != SearchVersion || token.IsCancellationRequested)
+            {
+                return;
+            }
+
+            Results = SortMatches(matches);
+            VisibleCount = Math.Min(48, Results.Count);
+            IsLoading = false;
+            SearchError = false;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex,
+                "Search failed. QueryText='{QueryText}', ActiveCategory='{ActiveCategory}', ActiveGender='{ActiveGender}', InStockOnly={InStockOnly}, SortMode='{SortMode}', Uri='{Uri}'",
+                QueryText,
+                ActiveCategory,
+                ActiveGender,
+                InStockOnly,
+                SortMode,
+                NavigationManager.Uri);
+
+            if (requestVersion == SearchVersion)
+            {
+                Results = new();
+                VisibleCount = 48;
+                IsLoading = false;
+                SearchError = true;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private IQueryable<Product> BuildBaseQuery()
+    {
+        var query = DbContext.Products
+            .AsNoTracking()
+            .Include(p => p.Variants)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(ActiveCategory) && Enum.TryParse<ProductCategory>(ActiveCategory, true, out var category))
+        {
+            query = query.Where(p => p.Category == category);
+        }
+
+        if (ActiveGender.HasValue)
+        {
+            if (ActiveGender.Value == Gender.Unisex)
+            {
+                query = query.Where(p => p.Gender == Gender.Unisex);
+            }
+            else
+            {
+                query = query.Where(p => p.Gender == ActiveGender.Value || p.Gender == Gender.Unisex);
+            }
+        }
+
+        if (InStockOnly)
+        {
+            query = query.Where(p => p.Variants.Any(v => v.Stock > 0));
+        }
+
+        return query;
+    }
+
+    private static List<string> SplitWords(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new();
+        }
+
+        return raw
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(word => !string.IsNullOrWhiteSpace(word))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static string EscapeLikePattern(string value)
+    {
+        return value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
+    }
+
+    private List<Product> SortMatches(List<Product> products)
+    {
+        if (SortMode == "relevance" && !HasSearchText)
+        {
+            return products.OrderByDescending(p => p.Id).ToList();
+        }
+
+        return SortMode switch
+        {
+            "price-low" => products.OrderBy(p => p.Variants.Select(v => v.Price).DefaultIfEmpty(0).Min()).ToList(),
+            "price-high" => products.OrderByDescending(p => p.Variants.Select(v => v.Price).DefaultIfEmpty(0).Max()).ToList(),
+            "newest" => products.OrderByDescending(p => p.Id).ToList(),
+            _ => products.OrderByDescending(p => GetRelevanceScore(p, QueryText)).ThenByDescending(p => p.Id).ToList()
+        };
+    }
+
+    private static int GetRelevanceScore(Product product, string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return 0;
+        }
+
+        var score = 0;
+        foreach (var word in SplitWords(query))
+        {
+            if (product.Name.Contains(word, StringComparison.OrdinalIgnoreCase))
+            {
+                score += 6;
+            }
+
+            if (!string.IsNullOrWhiteSpace(product.Description) && product.Description.Contains(word, StringComparison.OrdinalIgnoreCase))
+            {
+                score += 3;
+            }
+
+            if (product.Category.ToString().Contains(word, StringComparison.OrdinalIgnoreCase))
+            {
+                score += 2;
+            }
+
+            if (product.Gender.ToString().Contains(word, StringComparison.OrdinalIgnoreCase))
+            {
+                score += 2;
+            }
+
+            score += product.Variants.Count(v =>
+                (!string.IsNullOrWhiteSpace(v.Sku) && v.Sku.Contains(word, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrWhiteSpace(v.Color) && v.Color.Contains(word, StringComparison.OrdinalIgnoreCase))) * 4;
+        }
+
+        return score;
+    }
+
+    private async Task OnQueryChanged(ChangeEventArgs args)
+    {
+        QueryText = args.Value?.ToString() ?? string.Empty;
+        await UpdateQueryStringAsync();
+        await TriggerSearchAsync();
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await TriggerSearchAsync();
+        }
+    }
+
+    private async Task ClearQuery()
+    {
+        QueryText = string.Empty;
+        await UpdateQueryStringAsync();
+        await TriggerSearchAsync();
+    }
+
+    private async Task UpdateQueryStringAsync()
+    {
+        var queryValues = new Dictionary<string, string?>();
+
+        if (!string.IsNullOrWhiteSpace(QueryText))
+        {
+            queryValues["q"] = QueryText.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(ActiveCategory))
+        {
+            queryValues["category"] = ActiveCategory;
+        }
+
+        if (ActiveGender.HasValue)
+        {
+            queryValues["gender"] = ActiveGender.Value.ToString();
+        }
+
+        if (InStockOnly)
+        {
+            queryValues["stock"] = "1";
+        }
+
+        if (!string.IsNullOrWhiteSpace(SortMode) && SortMode != "relevance")
+        {
+            queryValues["sort"] = SortMode;
+        }
+
+        var target = QueryHelpers.AddQueryString("/search", queryValues);
+        NavigationManager.NavigateTo(target, replace: true);
+    }
+
+    private async Task ToggleCategory(string category)
+    {
+        ActiveCategory = ActiveCategory == category ? null : category;
+        await UpdateQueryStringAsync();
+        await TriggerSearchAsync();
+    }
+
+    private async Task OnGenderChanged(ChangeEventArgs args)
+    {
+        var value = args.Value?.ToString();
+        ActiveGender = string.IsNullOrWhiteSpace(value) ? null : Enum.TryParse<Gender>(value, true, out var gender) ? gender : null;
+        await UpdateQueryStringAsync();
+        await TriggerSearchAsync();
+    }
+
+    private async Task OnInStockChanged(ChangeEventArgs args)
+    {
+        InStockOnly = args.Value is bool value && value;
+        await UpdateQueryStringAsync();
+        await TriggerSearchAsync();
+    }
+
+    private async Task OnSortChanged(ChangeEventArgs args)
+    {
+        SortMode = args.Value?.ToString() ?? "relevance";
+        await UpdateQueryStringAsync();
+        await TriggerSearchAsync();
+    }
+
+    private async Task RemoveFilter((string Label, string Key) filter)
+    {
+        if (filter.Key == "query")
+        {
+            QueryText = string.Empty;
+        }
+        else if (filter.Key == "category")
+        {
+            ActiveCategory = null;
+        }
+        else if (filter.Key == "gender")
+        {
+            ActiveGender = null;
+        }
+        else if (filter.Key == "stock")
+        {
+            InStockOnly = false;
+        }
+
+        await UpdateQueryStringAsync();
+        await TriggerSearchAsync();
+    }
+
+    private async Task ClearAllFilters()
+    {
+        QueryText = string.Empty;
+        ActiveCategory = null;
+        ActiveGender = null;
+        InStockOnly = false;
+        SortMode = "relevance";
+        ShowFilterSheet = false;
+        await UpdateQueryStringAsync();
+        await TriggerSearchAsync();
+    }
+
+    private string GetResultsSummaryText(int count)
+    {
+        if (HasSearchText)
+        {
+            return $"{count} results for \"{QueryText.Trim()}\"";
+        }
+
+        if (HasFilterSelection)
+        {
+            var parts = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(ActiveCategory))
+            {
+                parts.Add(ActiveCategory);
+            }
+
+            if (ActiveGender.HasValue)
+            {
+                var genderLabel = ActiveGender.Value switch
+                {
+                    Gender.Men => "Men",
+                    Gender.Women => "Women",
+                    Gender.Unisex => "Unisex",
+                    _ => ActiveGender.Value.ToString()
+                };
+
+                parts.Add(genderLabel == "Men" ? "Men" : genderLabel == "Women" ? "Women" : "Unisex");
+            }
+
+            if (InStockOnly)
+            {
+                parts.Add("in stock only");
+            }
+
+            if (parts.Count == 0)
+            {
+                return $"{count} products";
+            }
+
+            return $"{count} products in {string.Join(" and ", parts)}";
+        }
+
+        return $"{count} products";
+    }
+
+    private async Task RetrySearch()
+    {
+        SearchError = false;
+        await TriggerSearchAsync();
+    }
+
+    private async Task ShowMoreResults()
+    {
+        VisibleCount = Math.Min(VisibleCount + 48, Results.Count);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleFilterSheet()
+    {
+        ShowFilterSheet = !ShowFilterSheet;
+    }
+
+    private async Task LoadNewArrivalsAsync()
+    {
+        NewArrivals = await DbContext.Products
+            .AsNoTracking()
+            .Include(p => p.Variants)
+            .OrderByDescending(p => p.Id)
+            .Take(4)
+            .ToListAsync();
+    }
+}
