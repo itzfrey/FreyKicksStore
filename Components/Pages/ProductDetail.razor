@@ -1,58 +1,339 @@
-@page "/admin/products"
-@layout FreyKicksStore.Components.Layout.AdminLayout
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@page "/product/{Id:int}"
+@rendermode InteractiveServer
 @using FreyKicksStore.Models
 @using Microsoft.EntityFrameworkCore
 @inject FreyKicksStore.Data.ApplicationDbContext DbContext
+@inject FreyKicksStore.Services.CartService CartService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
 
-<h2>Products</h2>
+<PageTitle>@(Product?.Name ?? "Product")</PageTitle>
 
-<a class="btn btn-dark mb-3" href="/admin/add-product">+ Add Product</a>
-
-@if (Products == null)
+@if (Product is null)
 {
     <p>Loading...</p>
 }
-else if (!Products.Any())
-{
-    <p>No products yet.</p>
-}
 else
 {
-    <table class="table table-striped align-middle">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Category</th>
-                <th>Gender</th>
-                <th>Variants</th>
-                <th>Total Stock</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var p in Products)
-            {
-                <tr>
-                    <td>@p.Name</td>
-                    <td>@p.Category</td>
-                    <td>@p.Gender</td>
-                    <td>@p.Variants.Count</td>
-                    <td>@p.Variants.Sum(v => v.Stock)</td>
-                    <td>
-                        <a class="btn btn-sm btn-outline-secondary" href="/admin/edit-product/@p.Id">Edit</a>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="container py-4">
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/">Home</a></li>
+                <li class="breadcrumb-item"><a href="/shop?gender=@Product.Gender">@Product.Gender</a></li>
+                <li class="breadcrumb-item"><a href="/shop?gender=@Product.Gender&category=@Product.Category">@Product.Category</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@Product.Name</li>
+            </ol>
+        </nav>
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                @if (ImageUrls.Count > 0)
+                {
+                    <div class="mb-3 border rounded overflow-hidden bg-light" style="height:520px; display:flex; align-items:center; justify-content:center;">
+                        <img src="@SelectedImage" alt="@Product.Name" style="max-height:100%; max-width:100%; object-fit:contain;" />
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var image in ImageUrls)
+                        {
+                            <button type="button" class="btn btn-link p-0 border @(SelectedImage == image ? "border-dark" : "border-light")" @onclick="() => SelectedImage = image" style="width:72px; height:72px; overflow:hidden;">
+                                <img src="@image" alt="@Product.Name thumbnail" style="width:100%; height:100%; object-fit:cover;" />
+                            </button>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="border rounded bg-light d-flex align-items-center justify-content-center text-muted" style="height:520px;">
+                        No image
+                    </div>
+                }
+            </div>
+
+            <div class="col-lg-6">
+                <h2 class="mb-3">@Product.Name</h2>
+                <p class="h4 mb-3">₦@CurrentPrice.ToString("N2")</p>
+
+                @if (!string.IsNullOrWhiteSpace(Product.Description))
+                {
+                    <p class="text-secondary mb-4">@Product.Description</p>
+                }
+
+                @if (AvailableColors.Count > 0)
+                {
+                    <div class="mb-4">
+                        <div class="fw-semibold mb-2">Color</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var color in AvailableColors)
+                            {
+                                <button type="button"
+                                        class="btn btn-sm @(SelectedColor == color ? "btn-dark" : "btn-outline-dark")"
+                                        @onclick="() => SelectColor(color)">
+                                    @color
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(SelectedColor) && AvailableSizes.Count > 0)
+                {
+                    <div class="mb-4">
+                        <div class="fw-semibold mb-2">Size</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var size in AvailableSizes)
+                            {
+                                <button type="button"
+                                        class="btn btn-sm @(SelectedSize == size ? "btn-dark" : "btn-outline-dark")"
+                                        @onclick="() => SelectSize(size)">
+                                    @size
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <div class="d-flex align-items-center border rounded">
+                        <button type="button" class="btn btn-light border-0" @onclick="DecreaseQuantity" aria-label="Decrease quantity">−</button>
+                        <span class="px-3 fw-semibold">@Quantity</span>
+                        <button type="button" class="btn btn-light border-0" @onclick="IncreaseQuantity" aria-label="Increase quantity">+</button>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(SelectionMessage))
+                {
+                    <div class="alert alert-warning py-2 mb-3">@SelectionMessage</div>
+                }
+
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-dark" @onclick="AddToCart">Add to Cart</button>
+                    <button type="button" class="btn btn-outline-dark" @onclick="BuyItNow">Buy It Now</button>
+                </div>
+            </div>
+        </div>
+    </div>
 }
 
-@code {
-    private List<Product>? Products;
+@if (ShowToast)
+{
+    <div class="cart-toast" role="status" aria-live="polite">✓ Added to cart</div>
+}
 
-    protected override void OnInitialized()
+<style>
+    .cart-toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 2000;
+        background: #1f1f1f;
+        color: white;
+        padding: 0.7rem 1rem;
+        border-radius: 8px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+        animation: toastFade 2.5s ease forwards;
+    }
+
+    @@keyframes toastFade {
+        0% { opacity: 0; transform: translateY(-8px); }
+        10% { opacity: 1; transform: translateY(0); }
+        80% { opacity: 1; }
+        100% { opacity: 0; transform: translateY(-6px); }
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Product? Product;
+    private List<string> ImageUrls = new();
+    private string SelectedImage = string.Empty;
+    private string? SelectedColor;
+    private string? SelectedSize;
+    private ProductVariant? SelectedVariant;
+    private int Quantity = 1;
+    private bool ShowToast;
+    private string? SelectionMessage;
+
+    protected override async Task OnInitializedAsync()
     {
-        Products = DbContext.Products.Include(p => p.Variants).OrderBy(p => p.Name).ToList();
+        Product = await DbContext.Products
+            .Include(p => p.Variants)
+            .FirstOrDefaultAsync(p => p.Id == Id);
+
+        if (Product is null)
+        {
+            return;
+        }
+
+        ImageUrls = ParseImageUrls(Product.ImageUrls);
+        if (ImageUrls.Count > 0)
+        {
+            SelectedImage = ImageUrls[0];
+        }
+
+        var colors = AvailableColors;
+        if (colors.Count > 0)
+        {
+            SelectedColor = colors[0];
+            var sizes = AvailableSizesFor(SelectedColor);
+            if (sizes.Count > 0)
+            {
+                SelectedSize = sizes[0];
+                SelectedVariant = Product.Variants.FirstOrDefault(v => v.Color == SelectedColor && v.Size == SelectedSize);
+            }
+        }
+    }
+
+    private static List<string> ParseImageUrls(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return new List<string>();
+        }
+
+        return raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(url => !string.IsNullOrWhiteSpace(url))
+            .ToList();
+    }
+
+    private List<string> AvailableColors =>
+        Product is null
+            ? new List<string>()
+            : Product.Variants
+                .Where(v => !string.IsNullOrWhiteSpace(v.Color))
+                .Select(v => v.Color!)
+                .Distinct()
+                .OrderBy(c => c)
+                .ToList();
+
+    private List<string> AvailableSizes =>
+        string.IsNullOrWhiteSpace(SelectedColor)
+            ? new List<string>()
+            : AvailableSizesFor(SelectedColor);
+
+    private List<string> AvailableSizesFor(string color)
+    {
+        if (Product is null)
+        {
+            return new List<string>();
+        }
+
+        return Product.Variants
+            .Where(v => v.Color == color && !string.IsNullOrWhiteSpace(v.Size))
+            .Select(v => v.Size!)
+            .Distinct()
+            .OrderBy(size => ParseSizeSortKey(size))
+            .ToList();
+    }
+
+    private static int ParseSizeSortKey(string? size)
+    {
+        return int.TryParse(size, out var numeric) ? numeric : int.MaxValue;
+    }
+
+    private void SelectColor(string color)
+    {
+        SelectedColor = color;
+        SelectedSize = null;
+        SelectedVariant = null;
+        SelectionMessage = null;
+
+        var sizes = AvailableSizesFor(color);
+        if (sizes.Count > 0)
+        {
+            SelectedSize = sizes[0];
+            SelectedVariant = Product?.Variants.FirstOrDefault(v => v.Color == color && v.Size == SelectedSize);
+        }
+    }
+
+    private void SelectSize(string size)
+    {
+        SelectedSize = size;
+        SelectedVariant = Product?.Variants.FirstOrDefault(v => v.Color == SelectedColor && v.Size == SelectedSize);
+        SelectionMessage = null;
+    }
+
+    private decimal CurrentPrice =>
+        SelectedVariant is not null
+            ? SelectedVariant.Price
+            : Product?.Variants.Select(v => v.Price).DefaultIfEmpty(0).Min() ?? 0m;
+
+    private void IncreaseQuantity()
+    {
+        Quantity += 1;
+    }
+
+    private void DecreaseQuantity()
+    {
+        if (Quantity > 1)
+        {
+            Quantity -= 1;
+        }
+    }
+
+    private async Task AddToCart()
+    {
+        if (SelectedVariant is null)
+        {
+            SelectionMessage = "Please select a size.";
+            return;
+        }
+
+        CartService.AddToCart(new CartItem
+        {
+            ProductVariantId = SelectedVariant.Id,
+            Sku = SelectedVariant.Sku,
+            ProductName = Product.Name,
+            Price = SelectedVariant.Price,
+            Quantity = Quantity
+        });
+
+        try
+        {
+            var cartItems = CartService.GetItems()
+                .Select(item => new CartItem
+                {
+                    ProductVariantId = item.ProductVariantId,
+                    Sku = item.Sku,
+                    ProductName = item.ProductName,
+                    Price = item.Price,
+                    Quantity = item.Quantity
+                })
+                .ToList();
+
+            var payload = System.Text.Json.JsonSerializer.Serialize(cartItems);
+            var encodedPayload = Uri.EscapeDataString(payload);
+            await JS.InvokeVoidAsync("eval", $"document.cookie = \"guest_cart={encodedPayload}; path=/; max-age=604800;\";");
+        }
+        catch (Exception)
+        {
+            // Ignore cookie write failures and keep the product flow working.
+        }
+
+        SelectionMessage = null;
+        ShowToast = true;
+        await InvokeAsync(StateHasChanged);
+        _ = DismissToastAsync();
+    }
+
+    private async Task BuyItNow()
+    {
+        if (SelectedVariant is null)
+        {
+            SelectionMessage = "Please select a size.";
+            return;
+        }
+
+        await AddToCart();
+        NavigationManager.NavigateTo("/checkout");
+    }
+
+    private async Task DismissToastAsync()
+    {
+        await Task.Delay(2500);
+        ShowToast = false;
+        await InvokeAsync(StateHasChanged);
     }
 }

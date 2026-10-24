@@ -1,0 +1,114 @@
+@page "/account/register-ui"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.WebUtilities
+@inject NavigationManager NavigationManager
+
+<PageTitle>Create account</PageTitle>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <h3 class="mb-4">Create account</h3>
+
+            <AuthorizeView>
+                <Authorized>
+                    <div class="alert alert-success">You're already signed in.</div>
+                </Authorized>
+                <NotAuthorized>
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">@ErrorMessage</div>
+                    }
+
+                    <form method="post" action="/account/register">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+
+                        <div class="mb-3">
+                            <label class="form-label" for="register-full-name">Full name</label>
+                            <input id="register-full-name" name="fullName" type="text" class="form-control" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="register-email">Email</label>
+                            <input id="register-email" name="email" type="email" class="form-control" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="register-password">Password</label>
+                            <div class="input-group">
+                                <input id="register-password" name="password" type="password" class="form-control" required />
+                                <button type="button" class="btn btn-outline-secondary"
+                                        onclick="var i=document.getElementById('register-password'); var show=i.type==='password'; i.type=show?'text':'password'; this.textContent=show?'Hide':'Show';">
+                                    Show
+                                </button>
+                            </div>
+                        </div>
+
+                                                <div class="mb-3">
+                            <label class="form-label" for="register-confirm-password">Confirm password</label>
+                            <input id="register-confirm-password" name="confirmPassword" type="password" class="form-control" required />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">Create account</button>
+                    </form>
+
+                    <div class="text-center my-3">
+                        <span class="text-muted">or</span>
+                    </div>
+
+                    <div class="d-grid">
+                        <button class="btn btn-outline-primary" type="button" onclick="return openGoogleLoginPopup();">
+                            Sign up with Google
+                        </button>
+                    </div>
+
+                    <p class="mt-3 text-center mb-0">
+                        Already have an account?
+                        <a href="@GetLoginUrl()">Sign in</a>
+                    </p>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? ErrorMessage;
+    private string ReturnUrl { get; set; } = "/";
+
+    protected override void OnInitialized()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("returnUrl", out var returnUrl) && !string.IsNullOrWhiteSpace(returnUrl))
+        {
+            ReturnUrl = returnUrl.ToString();
+        }
+
+        if (query.TryGetValue("error", out var error) && !string.IsNullOrEmpty(error))
+        {
+            ErrorMessage = GetFriendlyError(error.ToString());
+        }
+    }
+
+    private string GetLoginUrl()
+    {
+        var encodedReturnUrl = Uri.EscapeDataString(ReturnUrl);
+        return $"/account/login-ui?returnUrl={encodedReturnUrl}";
+    }
+
+    private static string GetFriendlyError(string? code) => code switch
+    {
+        "missing_fields" => "Please complete all fields.",
+        "invalid_email" => "Please enter a valid email address.",
+        "passwords_do_not_match" => "Passwords do not match.",
+        "duplicate_email" => "An account with that email already exists.",
+        "password_too_short" => "Password must be at least 6 characters long.",
+        "role_assignment_failed" or "create_user_failed" => "We could not create your account right now. Please try again.",
+        _ => "We could not create your account right now. Please try again."
+    };
+}

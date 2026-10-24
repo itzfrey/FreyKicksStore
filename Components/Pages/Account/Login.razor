@@ -1,40 +1,100 @@
 @page "/account/login-ui"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.WebUtilities
 @inject NavigationManager NavigationManager
 
 <PageTitle>Login</PageTitle>
 
-<h3>Sign in</h3>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <h3 class="mb-4">Sign in</h3>
 
-@if (!string.IsNullOrEmpty(ErrorMessage))
-{
-    <div class="alert alert-danger" role="alert">@ErrorMessage</div>
-}
+            <AuthorizeView>
+                <Authorized>
+                    <div class="alert alert-success">You're already signed in.</div>
+                </Authorized>
+                <NotAuthorized>
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">@ErrorMessage</div>
+                    }
 
-<AuthorizeView>
-    <Authorized>
-        <div class="alert alert-success">You're already signed in.</div>
-    </Authorized>
-    <NotAuthorized>
-        <p>
-            <a class="btn btn-outline-primary" href="#" onclick="return openGoogleLoginPopup();">Sign in with Google</a>        </p>
-    </NotAuthorized>
-</AuthorizeView>
+                    <form method="post" action="/account/login">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="returnUrl" value="@ReturnUrl" />
 
-<!-- Logout is in the header/nav; avoid duplicate here -->
+                        <div class="mb-3">
+                            <label class="form-label" for="login-email">Email</label>
+                            <input id="login-email" name="email" type="email" class="form-control" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="login-password">Password</label>
+                            <input id="login-password" name="password" type="password" class="form-control" required />
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input id="remember-me" name="rememberMe" class="form-check-input" type="checkbox" value="true" />
+                            <label class="form-check-label" for="remember-me">Remember me</label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">Sign in</button>
+                    </form>
+
+                    <div class="text-center my-3">
+                        <span class="text-muted">or</span>
+                    </div>
+
+                    <div class="d-grid">
+                        <button class="btn btn-outline-primary" type="button" onclick="return openGoogleLoginPopup();">
+                            Sign in with Google
+                        </button>
+                    </div>
+
+                    <p class="mt-3 text-center mb-0">
+                        Don't have an account?
+                        <a href="@GetRegisterUrl()">Create one</a>
+                    </p>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </div>
+</div>
 
 @code {
     private string? ErrorMessage;
+    private string ReturnUrl { get; set; } = "/";
 
     protected override void OnInitialized()
     {
         var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
         var query = QueryHelpers.ParseQuery(uri.Query);
-        if (query.TryGetValue("error", out var error))
+
+        if (query.TryGetValue("returnUrl", out var returnUrl) && !string.IsNullOrWhiteSpace(returnUrl))
         {
-            ErrorMessage = error.ToString();
+            ReturnUrl = returnUrl.ToString();
+        }
+
+        if (query.TryGetValue("error", out var error) && !string.IsNullOrEmpty(error))
+        {
+            ErrorMessage = GetFriendlyError(error.ToString());
         }
     }
+
+    private string GetRegisterUrl()
+    {
+        var encodedReturnUrl = Uri.EscapeDataString(ReturnUrl);
+        return $"/account/register-ui?returnUrl={encodedReturnUrl}";
+    }
+
+    private static string GetFriendlyError(string? code) => code switch
+    {
+        "invalid_credentials" => "Incorrect email or password.",
+        "locked_out" => "Too many failed attempts. Try again in a few minutes.",
+        "no_external_info" or "create_user_failed" or "add_login_failed" or "external_login_failed" => "Google sign-in failed, please try again.",
+        _ => "Something went wrong. Please try again."
+    };
 }

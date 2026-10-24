@@ -51,12 +51,9 @@
             <!-- icons unchanged -->
             <AuthorizeView>
                 <Authorized>
-                    <form method="post" action="/account/logout" class="m-0 me-3">
-                        <AntiforgeryToken />
-                        <button type="submit" class="btn btn-link p-0 border-0" aria-label="Account">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                        </button>
-                    </form>
+                    <a class="btn btn-link p-0 border-0 me-3" href="/account" aria-label="Account">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </a>
                 </Authorized>
                 <NotAuthorized>
                     <a class="btn btn-link p-0 me-3" href="/account/login-ui" aria-label="Login">
@@ -113,13 +110,10 @@
                 <div class="position-fixed bottom-0 start-0 w-100 p-3 border-top bg-white">
                     <AuthorizeView>
                         <Authorized>
-                            <form method="post" action="/account/logout" class="m-0">
-                                <AntiforgeryToken />
-                                <button type="submit" class="btn btn-link p-0 d-flex align-items-center text-dark text-decoration-none">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                                    <span class="text-uppercase small">Logout</span>
-                                </button>
-                            </form>
+                            <a class="d-flex align-items-center text-dark text-decoration-none" href="/account" @onclick="ToggleMobileMenu">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                <span class="text-uppercase small">Account</span>
+                            </a>
                         </Authorized>
                         <NotAuthorized>
                             <a class="d-flex align-items-center text-dark text-decoration-none" href="/account/login-ui" @onclick="ToggleMobileMenu">

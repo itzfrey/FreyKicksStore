@@ -1,0 +1,58 @@
+@page "/admin/products"
+@layout FreyKicksStore.Components.Layout.AdminLayout
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using FreyKicksStore.Models
+@using Microsoft.EntityFrameworkCore
+@inject FreyKicksStore.Data.ApplicationDbContext DbContext
+
+<h2>Products</h2>
+
+<a class="btn btn-dark mb-3" href="/admin/add-product">+ Add Product</a>
+
+@if (Products == null)
+{
+    <p>Loading...</p>
+}
+else if (!Products.Any())
+{
+    <p>No products yet.</p>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Gender</th>
+                <th>Variants</th>
+                <th>Total Stock</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Products)
+            {
+                <tr>
+                    <td>@p.Name</td>
+                    <td>@p.Category</td>
+                    <td>@p.Gender</td>
+                    <td>@p.Variants.Count</td>
+                    <td>@p.Variants.Sum(v => v.Stock)</td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-secondary" href="/admin/edit-product/@p.Id">Edit</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Product>? Products;
+
+    protected override void OnInitialized()
+    {
+        Products = DbContext.Products.Include(p => p.Variants).OrderBy(p => p.Name).ToList();
+    }
+}
