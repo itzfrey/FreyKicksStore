@@ -66,10 +66,16 @@ else
                         <div class="d-flex flex-wrap gap-2">
                             @foreach (var color in AvailableColors)
                             {
+                                var isSoldOut = IsColorSoldOut(color);
+                                var isSelected = SelectedColor == color;
                                 <button type="button"
-                                        class="btn btn-sm @(SelectedColor == color ? "btn-dark" : "btn-outline-dark")"
+                                        class="btn btn-sm @(isSelected ? "btn-dark" : isSoldOut ? "btn-outline-secondary soldout-color" : "btn-outline-dark")"
                                         @onclick="() => SelectColor(color)">
-                                    @color
+                                    <span>@color</span>
+                                    @if (isSoldOut)
+                                    {
+                                        <span class="color-sold-tag">Sold out</span>
+                                    }
                                 </button>
                             }
                         </div>
@@ -83,33 +89,61 @@ else
                         <div class="d-flex flex-wrap gap-2">
                             @foreach (var size in AvailableSizes)
                             {
+                                var variant = Product?.Variants.FirstOrDefault(v => v.Color == SelectedColor && v.Size == size);
+                                var isSoldOut = variant is null || variant.Stock <= 0;
+                                var isSelected = SelectedSize == size;
                                 <button type="button"
-                                        class="btn btn-sm @(SelectedSize == size ? "btn-dark" : "btn-outline-dark")"
+                                        class="btn btn-sm size-button @(isSelected ? "btn-dark" : "btn-outline-dark") @(isSoldOut ? "soldout-size" : string.Empty)"
+                                        disabled="@isSoldOut"
+                                        aria-disabled="@(isSoldOut ? "true" : null)"
+                                        title="@(isSoldOut ? "Sold out" : null)"
                                         @onclick="() => SelectSize(size)">
                                     @size
                                 </button>
                             }
                         </div>
+
+                        @if (SelectedSize is not null && SelectedVariant is not null && SelectedVariant.Stock > 0 && SelectedVariant.Stock <= 5)
+                        {
+                            <div class="stock-hint">Only @SelectedVariant.Stock left</div>
+                        }
+
+                        @if (SelectedColor is not null && IsColorSoldOut(SelectedColor) && SelectedSize is null)
+                        {
+                            <div class="stock-hint warning">Sold out in this color.</div>
+                        }
                     </div>
                 }
 
-                <div class="d-flex align-items-center gap-3 mb-4">
-                    <div class="d-flex align-items-center border rounded">
-                        <button type="button" class="btn btn-light border-0" @onclick="DecreaseQuantity" aria-label="Decrease quantity">−</button>
-                        <span class="px-3 fw-semibold">@Quantity</span>
-                        <button type="button" class="btn btn-light border-0" @onclick="IncreaseQuantity" aria-label="Increase quantity">+</button>
+                @if (SelectedVariant is not null && SelectedVariant.Stock > 0)
+                {
+                    <div class="d-flex align-items-center gap-3 mb-4">
+                        <div class="d-flex align-items-center border rounded quantity-box">
+                            <button type="button" class="btn btn-light border-0 quantity-button" @onclick="DecreaseQuantity" disabled="@(Quantity <= 1)" aria-label="Decrease quantity">−</button>
+                            <span class="px-3 fw-semibold">@Quantity</span>
+                            <button type="button" class="btn btn-light border-0 quantity-button" @onclick="IncreaseQuantity" disabled="@(Quantity >= MaxAddableQuantityForSelectedVariant)" aria-label="Increase quantity">+</button>
+                        </div>
                     </div>
-                </div>
+                }
 
                 @if (!string.IsNullOrWhiteSpace(SelectionMessage))
                 {
                     <div class="alert alert-warning py-2 mb-3">@SelectionMessage</div>
                 }
 
-                <div class="d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-dark" @onclick="AddToCart">Add to Cart</button>
-                    <button type="button" class="btn btn-outline-dark" @onclick="BuyItNow">Buy It Now</button>
-                </div>
+                @if (IsProductSoldOut)
+                {
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-secondary" disabled aria-disabled="true">Sold out</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-dark" disabled="@(!CanAddSelectedVariant)" aria-disabled="@(!CanAddSelectedVariant ? "true" : null)" @onclick="AddToCart">Add to Cart</button>
+                        <button type="button" class="btn btn-outline-dark" disabled="@(!CanAddSelectedVariant)" aria-disabled="@(!CanAddSelectedVariant ? "true" : null)" @onclick="BuyItNow">Buy It Now</button>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -134,6 +168,57 @@ else
         animation: toastFade 2.5s ease forwards;
     }
 
+    .soldout-color {
+        opacity: 0.6;
+        background: #f8f9fa;
+        border-color: #dee2e6;
+        color: #6c757d;
+    }
+
+    .color-sold-tag {
+        display: inline-block;
+        margin-left: 0.5rem;
+        font-size: 0.7rem;
+        border-radius: 999px;
+        background: #f1f3f5;
+        color: #495057;
+        padding: 0.18rem 0.5rem;
+        vertical-align: middle;
+    }
+
+    .size-button {
+        min-width: 54px;
+    }
+
+    .soldout-size {
+        background: #f3f4f5;
+        border-color: #e9ecef;
+        color: #adb5bd;
+        text-decoration: line-through;
+        text-decoration-thickness: 2px;
+        text-decoration-color: rgba(108, 117, 125, 0.75);
+    }
+
+    .quantity-box {
+        min-height: 44px;
+    }
+
+    .quantity-button {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .stock-hint {
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+        color: #b42318;
+        font-weight: 600;
+    }
+
+    .stock-hint.warning {
+        color: #b42318;
+    }
+
     @@keyframes toastFade {
         0% { opacity: 0; transform: translateY(-8px); }
         10% { opacity: 1; transform: translateY(0); }
@@ -156,7 +241,48 @@ else
     private bool ShowToast;
     private string? SelectionMessage;
 
+    private bool IsProductSoldOut => Product is not null && Product.Variants.All(v => v.Stock <= 0);
+
+    private bool CanAddSelectedVariant =>
+        SelectedVariant is not null &&
+        SelectedVariant.Stock > 0 &&
+        MaxAddableQuantityForSelectedVariant > 0 &&
+        Quantity > 0 &&
+        Quantity <= MaxAddableQuantityForSelectedVariant;
+
+    private int MaxAddableQuantityForSelectedVariant
+    {
+        get
+        {
+            if (SelectedVariant is null)
+            {
+                return 0;
+            }
+
+            return GetMaxAddableQuantity(SelectedVariant);
+        }
+    }
+
+    private int GetMaxAddableQuantity(ProductVariant variant)
+    {
+        if (variant.Stock <= 0)
+        {
+            return 0;
+        }
+
+        var alreadyInCart = CartService.GetItems()
+            .Where(item => item.ProductVariantId == variant.Id)
+            .Sum(item => item.Quantity);
+
+        return Math.Max(0, variant.Stock - alreadyInCart);
+    }
+
     protected override async Task OnInitializedAsync()
+    {
+        await RefreshProductStateAsync();
+    }
+
+    private async Task RefreshProductStateAsync()
     {
         Product = await DbContext.Products
             .Include(p => p.Variants)
@@ -173,17 +299,55 @@ else
             SelectedImage = ImageUrls[0];
         }
 
-        var colors = AvailableColors;
-        if (colors.Count > 0)
+        ApplyPreferredSelection();
+    }
+
+    private void ApplyPreferredSelection()
+    {
+        if (Product is null)
         {
-            SelectedColor = colors[0];
-            var sizes = AvailableSizesFor(SelectedColor);
-            if (sizes.Count > 0)
-            {
-                SelectedSize = sizes[0];
-                SelectedVariant = Product.Variants.FirstOrDefault(v => v.Color == SelectedColor && v.Size == SelectedSize);
-            }
+            return;
         }
+
+        var firstColorWithStock = Product.Variants
+            .Where(v => !string.IsNullOrWhiteSpace(v.Color))
+            .Select(v => v.Color!)
+            .Distinct()
+            .FirstOrDefault(color => Product.Variants.Any(v => v.Color == color && v.Stock > 0));
+
+        SelectedColor = string.IsNullOrWhiteSpace(firstColorWithStock)
+            ? AvailableColors.FirstOrDefault()
+            : firstColorWithStock;
+
+        if (string.IsNullOrWhiteSpace(SelectedColor))
+        {
+            SelectedSize = null;
+            SelectedVariant = null;
+            Quantity = 1;
+            SelectionMessage = "Sold out in this color.";
+            return;
+        }
+
+        var firstAvailableSize = Product.Variants
+            .Where(v => v.Color == SelectedColor && !string.IsNullOrWhiteSpace(v.Size) && v.Stock > 0)
+            .Select(v => v.Size!)
+            .Distinct()
+            .OrderBy(size => ParseSizeSortKey(size))
+            .FirstOrDefault();
+
+        if (string.IsNullOrWhiteSpace(firstAvailableSize))
+        {
+            SelectedSize = null;
+            SelectedVariant = null;
+            Quantity = 1;
+            SelectionMessage = "Sold out in this color.";
+            return;
+        }
+
+        SelectedSize = firstAvailableSize;
+        SelectedVariant = Product.Variants.First(v => v.Color == SelectedColor && v.Size == SelectedSize && v.Stock > 0);
+        Quantity = ClampQuantity();
+        SelectionMessage = null;
     }
 
     private static List<string> ParseImageUrls(string? raw)
@@ -233,6 +397,40 @@ else
         return int.TryParse(size, out var numeric) ? numeric : int.MaxValue;
     }
 
+    private bool IsColorSoldOut(string color)
+    {
+        if (Product is null)
+        {
+            return false;
+        }
+
+        return Product.Variants
+            .Where(v => v.Color == color)
+            .All(v => v.Stock <= 0);
+    }
+
+    private int ClampQuantity()
+    {
+        if (SelectedVariant is null)
+        {
+            return 1;
+        }
+
+        var maxAllowed = GetMaxAddableQuantity(SelectedVariant);
+        var effectiveLimit = SelectedVariant.Stock;
+        if (maxAllowed > 0)
+        {
+            effectiveLimit = Math.Min(effectiveLimit, maxAllowed);
+        }
+
+        if (effectiveLimit <= 0)
+        {
+            return 1;
+        }
+
+        return Math.Clamp(Quantity, 1, effectiveLimit);
+    }
+
     private void SelectColor(string color)
     {
         SelectedColor = color;
@@ -240,12 +438,22 @@ else
         SelectedVariant = null;
         SelectionMessage = null;
 
-        var sizes = AvailableSizesFor(color);
-        if (sizes.Count > 0)
+        var firstAvailableSize = Product?.Variants
+            .Where(v => v.Color == color && !string.IsNullOrWhiteSpace(v.Size) && v.Stock > 0)
+            .Select(v => v.Size!)
+            .Distinct()
+            .OrderBy(size => ParseSizeSortKey(size))
+            .FirstOrDefault();
+
+        if (!string.IsNullOrWhiteSpace(firstAvailableSize))
         {
-            SelectedSize = sizes[0];
-            SelectedVariant = Product?.Variants.FirstOrDefault(v => v.Color == color && v.Size == SelectedSize);
+            SelectedSize = firstAvailableSize;
+            SelectedVariant = Product?.Variants.FirstOrDefault(v => v.Color == color && v.Size == SelectedSize && v.Stock > 0);
+            Quantity = ClampQuantity();
+            return;
         }
+
+        SelectionMessage = "Sold out in this color.";
     }
 
     private void SelectSize(string size)
@@ -253,6 +461,7 @@ else
         SelectedSize = size;
         SelectedVariant = Product?.Variants.FirstOrDefault(v => v.Color == SelectedColor && v.Size == SelectedSize);
         SelectionMessage = null;
+        Quantity = ClampQuantity();
     }
 
     private decimal CurrentPrice =>
@@ -262,7 +471,31 @@ else
 
     private void IncreaseQuantity()
     {
-        Quantity += 1;
+        if (SelectedVariant is null)
+        {
+            return;
+        }
+
+        var maxAllowed = GetMaxAddableQuantity(SelectedVariant);
+        if (maxAllowed <= 0)
+        {
+            SelectionMessage = "You already have the maximum available in your cart.";
+            return;
+        }
+
+        if (Quantity < maxAllowed && Quantity < SelectedVariant.Stock)
+        {
+            Quantity += 1;
+        }
+
+        if (SelectedVariant.Stock > 0 && SelectedVariant.Stock <= 5)
+        {
+            SelectionMessage = $"Only {SelectedVariant.Stock} left";
+        }
+        else
+        {
+            SelectionMessage = null;
+        }
     }
 
     private void DecreaseQuantity()
@@ -271,22 +504,69 @@ else
         {
             Quantity -= 1;
         }
+
+        if (SelectedVariant is not null && SelectedVariant.Stock > 0 && SelectedVariant.Stock <= 5)
+        {
+            SelectionMessage = $"Only {SelectedVariant.Stock} left";
+        }
+        else
+        {
+            SelectionMessage = null;
+        }
     }
 
-    private async Task AddToCart()
+    private async Task<bool> AddToCart()
     {
         if (SelectedVariant is null)
         {
             SelectionMessage = "Please select a size.";
-            return;
+            return false;
+        }
+
+        var freshVariant = await DbContext.ProductVariants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(v => v.Id == SelectedVariant.Id);
+
+        if (freshVariant is null)
+        {
+            SelectionMessage = "This size is no longer available.";
+            await RefreshProductStateAsync();
+            return false;
+        }
+
+        var alreadyInCart = CartService.GetItems()
+            .Where(item => item.ProductVariantId == freshVariant.Id)
+            .Sum(item => item.Quantity);
+
+        if (freshVariant.Stock <= 0)
+        {
+            SelectionMessage = "This size is sold out.";
+            await RefreshProductStateAsync();
+            return false;
+        }
+
+        var maxAddable = Math.Max(0, freshVariant.Stock - alreadyInCart);
+        if (maxAddable <= 0)
+        {
+            SelectionMessage = "You already have the maximum available in your cart.";
+            await RefreshProductStateAsync();
+            return false;
+        }
+
+        if (Quantity > maxAddable)
+        {
+            Quantity = maxAddable;
+            SelectionMessage = $"Only {maxAddable} left";
+            await RefreshProductStateAsync();
+            return false;
         }
 
         CartService.AddToCart(new CartItem
         {
-            ProductVariantId = SelectedVariant.Id,
-            Sku = SelectedVariant.Sku,
-            ProductName = Product.Name,
-            Price = SelectedVariant.Price,
+            ProductVariantId = freshVariant.Id,
+            Sku = freshVariant.Sku,
+            ProductName = Product?.Name ?? string.Empty,
+            Price = freshVariant.Price,
             Quantity = Quantity
         });
 
@@ -316,18 +596,16 @@ else
         ShowToast = true;
         await InvokeAsync(StateHasChanged);
         _ = DismissToastAsync();
+        return true;
     }
 
     private async Task BuyItNow()
     {
-        if (SelectedVariant is null)
+        var wasAdded = await AddToCart();
+        if (wasAdded)
         {
-            SelectionMessage = "Please select a size.";
-            return;
+            NavigationManager.NavigateTo("/checkout");
         }
-
-        await AddToCart();
-        NavigationManager.NavigateTo("/checkout");
     }
 
     private async Task DismissToastAsync()
