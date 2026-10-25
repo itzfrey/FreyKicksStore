@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FreyKicksStore")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b36e1433307fbf1cd0731bdc6b57f6f92601725a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b8166df2637b1f3fea0850eaecc3430e027f141b")]
 [assembly: System.Reflection.AssemblyProductAttribute("FreyKicksStore")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FreyKicksStore")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

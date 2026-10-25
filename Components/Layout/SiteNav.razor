@@ -3,13 +3,12 @@
 @using Microsoft.AspNetCore.Components.Forms
 
 <nav class="navbar navbar-expand-lg navbar-light bg-white" style="position:relative;">
-    <div class="container-fluid d-flex align-items-center" style="position:relative;">
-        <button class="btn d-lg-none border-0" type="button" @onclick="ToggleMobileMenu" aria-label="Open menu">
+    <div class="container-fluid d-flex align-items-center mobile-header-shell" style="position:relative;">
+        <button class="btn d-lg-none border-0 mobile-menu-button" type="button" @onclick="ToggleMobileMenu" aria-label="Open menu">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
 
-        <!-- Logo: normal flow, left-aligned -->
-        <a class="site-logo navbar-brand m-0 logo-centered" href="/">
+        <a class="site-logo navbar-brand m-0 logo-centered mobile-logo" href="/">
             <img src="/images/products/Frey_kicks_logo.png" alt="Frey Kicks" style="height:50px;" class="d-none d-lg-inline-block" />
             <span class="d-lg-none lh-1 d-inline-block">
                 Frey<br />Kicks
@@ -47,7 +46,7 @@
             </ul>
         </div>
 
-        <div class="d-flex align-items-center ms-auto">
+        <div class="d-flex align-items-center ms-auto header-actions">
             <!-- icons unchanged -->
             <AuthorizeView>
                 <Authorized>
@@ -157,6 +156,31 @@
         }
     </div>
 }
+
+<style>
+    @@media (max-width: 991.98px) {
+        .mobile-header-shell {
+            position: relative;
+            min-height: 52px;
+        }
+
+        .mobile-menu-button,
+        .header-actions {
+            position: relative;
+            z-index: 2;
+        }
+
+        .mobile-logo {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            margin: 0;
+            text-align: center;
+        }
+    }
+</style>
 
 @code {
     private enum MobileLevel { Top, Men, Women }

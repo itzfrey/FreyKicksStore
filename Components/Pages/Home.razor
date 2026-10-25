@@ -1,370 +1,699 @@
 ﻿@page "/"
-
+@using FreyKicksStore.Components.Shared
 @using FreyKicksStore.Models
 @using Microsoft.EntityFrameworkCore
-@using FreyKicksStore.Components.Shared
-
 @inject FreyKicksStore.Data.ApplicationDbContext DbContext
+@inject IConfiguration Configuration
 
-<PageTitle>Frey Kicks</PageTitle>
+<PageTitle>Frey Kicks | Sneakers, Corporate Shoes and Slides</PageTitle>
 
-<section class="hero-carousel" id="heroCarousel">
+<script type="module" src="/js/hero-carousel.js"></script>
 
-    @for (int i = 0; i < HeroSlides.Count; i++)
+<div class="home-page-shell">
+    @if (HeroSlides.Count > 0)
     {
-        var slide = HeroSlides[i];
-
-        <a href="/shop?category=@slide.Category"
-           class="hero-slide @(i == 0 ? "active" : "")">
-
-            <img src="@slide.ImageUrl"
-                 alt="@slide.Category"
-                 class="hero-bg" />
-
-            <div class="hero-overlay"></div>
-
-            <div class="hero-content">
-                <h1 class="site-logo hero-title">Frey Kicks</h1>
-
-                <p class="hero-subtitle">
-                    @slide.Subtitle
-                </p>
-
-                <span class="btn hero-cta">
-                    Shop @slide.Category
-                </span>
-            </div>
-
-        </a>
+        <HeroCarousel Slides="HeroSlides" />
     }
 
-    <div class="hero-dots">
-        @for (int i = 0; i < HeroSlides.Count; i++)
+    @if (Products.Any())
+    {
+        @if (CategoryTiles.Count > 0)
         {
-            <button type="button"
-                    class="hero-dot @(i == 0 ? "active" : "")"
-                    data-index="@i"
-                    aria-label="Go to slide @(i + 1)">
-            </button>
+            <section class="home-section">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Shop</p>
+                        <h2>Shop by category</h2>
+                    </div>
+                </div>
+
+                <div class="category-grid">
+                    @foreach (var tile in CategoryTiles)
+                    {
+                        <a class="category-tile" href="@tile.Url" aria-label="Shop @tile.Name">
+                            <div class="category-image-wrap">
+                                @if (!string.IsNullOrWhiteSpace(tile.ImageUrl))
+                                {
+                                    <img src="@tile.ImageUrl" alt="@tile.Name" loading="lazy" decoding="async" />
+                                }
+                                else
+                                {
+                                    <div class="category-placeholder" aria-label="No image available"></div>
+                                }
+                                <div class="category-overlay"></div>
+                            </div>
+                            <div class="category-meta">
+                                <span>@tile.Name</span>
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M5 12h14M13 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                        </a>
+                    }
+                </div>
+            </section>
         }
-    </div>
 
-</section>
-
-
-@if (Bestsellers.Any())
-{
-    <section class="mb-5">
-
-        <h3 class="mb-3">Bestsellers</h3>
-
-        <div class="row row-cols-2 row-cols-md-4 g-3">
-
-            @foreach (var p in Bestsellers)
-            {
-                <div class="col">
-                    <ProductCard Product="p" />
+        @if (NewArrivals.Count > 0)
+        {
+            <section class="home-section">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Fresh arrivals</p>
+                        <h2>New arrivals</h2>
+                    </div>
+                    <a href="/shop" class="view-all-link">View all</a>
                 </div>
-            }
 
-        </div>
-
-    </section>
-}
-
-
-@if (LatestArrivals.Any())
-{
-    <section class="mb-5">
-
-        <h3 class="mb-3">Latest Arrivals</h3>
-
-        <div class="row row-cols-2 row-cols-md-4 g-3">
-
-            @foreach (var p in LatestArrivals)
-            {
-                <div class="col">
-                    <ProductCard Product="p" />
+                <div class="product-grid product-grid-4">
+                    @foreach (var product in NewArrivals)
+                    {
+                        <ProductCard Product="product" />
+                    }
                 </div>
-            }
+            </section>
+        }
 
-        </div>
-
-    </section>
-}
-
-
-@if (Slides.Any())
-{
-    <section class="mb-5">
-
-        <h3 class="mb-3">Slides</h3>
-
-        <div class="row row-cols-2 row-cols-md-4 g-3">
-
-            @foreach (var p in Slides)
-            {
-                <div class="col">
-                    <ProductCard Product="p" />
+        @if (GenderBanners.Count > 0)
+        {
+            <section class="home-section">
+                <div class="gender-grid">
+                    @foreach (var banner in GenderBanners)
+                    {
+                        <a class="gender-banner" href="@banner.Url">
+                            <img src="@banner.ImageUrl" alt="@banner.Title" loading="lazy" decoding="async" />
+                            <div class="gender-banner__overlay"></div>
+                            <div class="gender-banner__content">
+                                <span class="eyebrow eyebrow-dark">Shop now</span>
+                                <h3>@banner.Title</h3>
+                            </div>
+                        </a>
+                    }
                 </div>
-            }
+            </section>
+        }
 
-        </div>
-
-    </section>
-}
-
-
-@if (RandomSneakers.Any())
-{
-    <section class="mb-5">
-
-        <h3 class="mb-3">Sneakers You Might Like</h3>
-
-        <div class="row row-cols-2 row-cols-md-4 g-3">
-
-            @foreach (var p in RandomSneakers)
-            {
-                <div class="col">
-                    <ProductCard Product="p" />
+        @if (FeaturedProducts.Count > 0)
+        {
+            <section class="home-section">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Curated picks</p>
+                        <h2>Featured</h2>
+                    </div>
+                    <a href="/shop" class="view-all-link">View all</a>
                 </div>
-            }
 
-        </div>
+                <div class="product-grid product-grid-4">
+                    @foreach (var product in FeaturedProducts)
+                    {
+                        <ProductCard Product="product" />
+                    }
+                </div>
+            </section>
+        }
 
-    </section>
-}
+        @if (!string.IsNullOrWhiteSpace(WhatsAppNumber))
+        {
+            <section class="wa-banner" aria-label="WhatsApp support banner">
+                <div class="wa-banner__text">
+                    <h3>Not sure about your size? Chat with us</h3>
+                    <p>We’ll help you pick the right fit.</p>
+                </div>
+                <a class="btn btn-success wa-banner__button" href="@BuildWhatsAppUrl("Hello Frey Kicks, I need help choosing the right size.")" target="_blank" rel="noopener noreferrer">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20.5 12.1c0 4.5-3.7 8.1-8.2 8.1a8.4 8.4 0 0 1-4-1.1L4 20.5l1.4-4.1A8 8 0 0 1 3.7 12c0-4.5 3.7-8.1 8.2-8.1s8.1 3.6 8.1 8.1Zm-8.2-5.6c-2.4 0-4.3 1.8-4.3 4.1 0 .9.3 1.8.8 2.5l.2.3-.5 1.5 1.5-.5.3.2c.7.4 1.5.6 2.4.6 2.4 0 4.3-1.8 4.3-4.1 0-2.3-1.8-4.1-4.3-4.1Zm2.6 5.3c-.1-.1-.2-.2-.5-.2-.2 0-.5.1-.8.3l-.2.2c-.1.1-.2.1-.3 0-.2-.1-.8-.4-1.4-.9-.5-.5-.8-1-1-1.3-.1-.3 0-.5.1-.7l.1-.2c.1-.1.1-.2 0-.3l-.3-.7c-.1-.1-.2-.1-.3-.2h-.3c-.1 0-.3.1-.4.2-.2.2-.6.6-.6 1.4 0 .8.6 1.6.8 2.1.2.4 1.5 2.3 3.5 3.1.5.2.9.4 1.2.5.5.2.9.2 1.2.1.4-.1 1.2-.5 1.3-1 .1-.5.1-.9 0-1.1l-.2-.3Z" fill="currentColor"/>
+                    </svg>
+                    Chat on WhatsApp
+                </a>
+            </section>
+        }
+    }
+    else
+    {
+        <section class="empty-state-wrap">
+            <div class="empty-state-card">
+                <h2>No products yet</h2>
+                <p>We’re refreshing the collection. Check back soon.</p>
+                <a href="/shop" class="btn btn-dark">Browse shop</a>
+            </div>
+        </section>
+    }
+</div>
 
+<style>
+    .home-page-shell {
+        width: 100%;
+        max-width: 1280px;
+        margin: 0 auto;
+        background: #f8f9fa;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    .home-section {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 24px 16px 0;
+    }
+
+    .section-heading {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .eyebrow {
+        margin: 0 0 6px;
+        color: #6b7280;
+        font-size: 0.72rem;
+        letter-spacing: 0.12em;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .section-heading h2 {
+        margin: 0;
+        font-size: clamp(1.9rem, 2vw, 2.5rem);
+        line-height: 1.1;
+        letter-spacing: -0.05em;
+        color: #111111;
+    }
+
+    .view-all-link {
+        color: #111111;
+        text-decoration: none;
+        font-weight: 600;
+        transition: opacity 0.2s ease;
+    }
+
+    .view-all-link:hover,
+    .view-all-link:focus-visible {
+        opacity: 0.7;
+        text-decoration: none;
+        color: #111111;
+        outline: none;
+    }
+
+.category-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .category-tile {
+        position: relative;
+        display: block;
+        color: #111111;
+        text-decoration: none;
+        border-radius: 16px;
+        overflow: hidden;
+        background: #ffffff;
+        border: 1px solid rgba(17, 17, 17, 0.06);
+        box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .category-tile:hover,
+    .category-tile:focus-visible {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+        text-decoration: none;
+        color: #111111;
+        outline: none;
+    }
+
+    .category-image-wrap {
+        position: relative;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+        background: #f1f3f5;
+        padding: 14px;
+    }
+
+    .category-image-wrap img,
+    .category-placeholder {
+        position: absolute;
+        inset: 14px;
+        width: calc(100% - 28px);
+        height: calc(100% - 28px);
+        object-fit: contain;
+        object-position: center;
+        display: block;
+        transition: transform 0.25s ease;
+    }
+
+    .category-tile:hover .category-image-wrap img,
+    .category-tile:focus-visible .category-image-wrap img {
+        transform: scale(1.03);
+    }
+
+    .category-placeholder {
+        background: linear-gradient(180deg, #e5e7eb 0%, #d1d5db 100%);
+        border-radius: 12px;
+    }
+
+    .category-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(17,17,17,0.00), rgba(17,17,17,0.06));
+    }
+
+    .category-meta {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 16px 18px 18px;
+        font-weight: 700;
+        font-size: 1rem;
+        background: rgba(255,255,255,0.96);
+    }
+
+    .category-meta svg {
+        width: 18px;
+        height: 18px;
+        display: block;
+    }
+
+    .product-grid {
+        display: grid;
+        gap: 18px;
+    }
+
+    .product-grid-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .gender-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+    }
+
+    .gender-banner {
+        position: relative;
+        display: block;
+        min-height: 260px;
+        border-radius: 20px;
+        overflow: hidden;
+        background: #111111;
+        color: #ffffff;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .gender-banner:hover,
+    .gender-banner:focus-visible {
+        transform: translateY(-2px);
+        box-shadow: 0 18px 32px rgba(15, 23, 42, 0.12);
+        outline: none;
+    }
+
+    .gender-banner img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .gender-banner__overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, rgba(17,17,17,0.7), rgba(17,17,17,0.18));
+    }
+
+    .gender-banner__content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: end;
+        height: 100%;
+        padding: 24px 24px 22px;
+    }
+
+    .eyebrow-dark {
+        color: rgba(255,255,255,0.8);
+    }
+
+    .gender-banner__content h3 {
+        margin: 0;
+        font-size: clamp(2rem, 2vw + 1rem, 3rem);
+        line-height: 1;
+        letter-spacing: -0.05em;
+        color: #ffffff;
+    }
+
+    .wa-banner {
+        max-width: 1280px;
+        margin: 48px auto;
+        background: #111111;
+        border-radius: 22px;
+        padding: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+    }
+
+    .wa-banner__text {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .wa-banner__text h3 {
+        margin: 0;
+        color: #ffffff;
+        font-size: clamp(1.5rem, 1vw + 1rem, 2.1rem);
+        letter-spacing: -0.04em;
+    }
+
+    .wa-banner__text p {
+        margin: 0;
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 0.98rem;
+    }
+
+    .wa-banner__button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        white-space: nowrap;
+        border-radius: 999px;
+        padding: 0.9rem 1.3rem;
+        font-weight: 700;
+        box-shadow: 0 14px 28px rgba(34,197,94,0.35);
+    }
+
+    .wa-banner__button svg {
+        width: 18px;
+        height: 18px;
+        display: block;
+    }
+
+    .empty-state-wrap {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 56px 16px 16px;
+    }
+
+    .empty-state-card {
+        background: #ffffff;
+        border-radius: 22px;
+        border: 1px solid rgba(17, 17, 17, 0.06);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
+        padding: 44px 24px;
+        text-align: center;
+    }
+
+    .empty-state-card h2 {
+        margin: 0 0 10px;
+        font-size: clamp(2rem, 2vw + 1rem, 2.6rem);
+        letter-spacing: -0.05em;
+        color: #111111;
+    }
+
+    .empty-state-card p {
+        margin: 0 0 18px;
+        color: #6b7280;
+    }
+
+    @@media (max-width: 991.98px) {
+        .category-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .product-grid-4 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @@media (max-width: 767.98px) {
+        .home-section {
+            padding-left: 12px;
+            padding-right: 12px;
+        }
+
+        .category-grid,
+        .product-grid-4,
+        .gender-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .wa-banner {
+            flex-direction: column;
+            align-items: stretch;
+            text-align: center;
+            padding: 24px;
+        }
+
+        .wa-banner__button {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    @@media (max-width: 575.98px) {
+        .category-grid,
+        .product-grid-4,
+        .gender-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .section-heading {
+            align-items: center;
+        }
+
+        .hero-content p {
+            max-width: 100%;
+        }
+    }
+</style>
 
 @code {
-
-    private List<Product> Bestsellers = new();
-    private List<Product> LatestArrivals = new();
-    private List<Product> Slides = new();
-    private List<Product> RandomSneakers = new();
-    private List<HeroSlideData> HeroSlides = new();
-
-
-    private static readonly Dictionary<ProductCategory, string> CategoryTaglines = new()
+    private sealed class HeroSlideCopy
     {
-        { ProductCategory.Sneakers, "Step out in style" },
-        { ProductCategory.Corporate, "Boardroom ready" },
-        { ProductCategory.Slides, "Kick back, relax" },
-        { ProductCategory.Canvas, "Everyday essentials" },
-        { ProductCategory.Loafers, "Effortlessly sharp" }
-    };
-
-
-    protected override void OnInitialized()
-    {
-        var allActive = DbContext.Products
-            .Include(p => p.Variants);
-
-
-        // Featured / bestselling products
-        Bestsellers = allActive
-            .OrderByDescending(p => p.Id)
-            .Take(4)
-            .ToList();
-
-
-        // Latest arrivals
-        LatestArrivals = allActive
-            .OrderByDescending(p => p.Id)
-            .Skip(4)
-            .Take(4)
-            .ToList();
-
-
-        // Slides
-        Slides = allActive
-            .Where(p => p.Category == ProductCategory.Slides)
-            .Take(4)
-            .ToList();
-
-
-        // Random sneakers
-        RandomSneakers = allActive
-            .Where(p => p.Category == ProductCategory.Sneakers)
-            .ToList()
-            .OrderBy(_ => Guid.NewGuid())
-            .Take(4)
-            .ToList();
-
-
-        // Hero carousel:
-        // Add one featured image for each product category.
-        // Categories without products/images are skipped.
-
-        var categories = Enum.GetValues<ProductCategory>()
-            .Where(c => c != ProductCategory.General);
-
-
-        foreach (var cat in categories)
-        {
-            var product = allActive
-                .Where(p =>
-                    p.Category == cat &&
-                    !string.IsNullOrEmpty(p.ImageUrls))
-                .FirstOrDefault();
-
-
-            if (product != null)
-            {
-                var firstImage = product.ImageUrls!
-                    .Split(
-                        ',',
-                        StringSplitOptions.RemoveEmptyEntries
-                    )
-                    .FirstOrDefault()?
-                    .Trim();
-
-
-                if (!string.IsNullOrEmpty(firstImage))
-                {
-                    HeroSlides.Add(new HeroSlideData
-                    {
-                        Category = cat.ToString(),
-
-                        ImageUrl = firstImage,
-
-                        Subtitle = CategoryTaglines.TryGetValue(
-                            cat,
-                            out var tagline)
-                                ? tagline
-                                : cat.ToString()
-                    });
-                }
-            }
-        }
-
-
-        // Fallback hero image if there are no products with images.
-
-        if (!HeroSlides.Any())
-        {
-            HeroSlides.Add(new HeroSlideData
-            {
-                Category = "Shop",
-
-                ImageUrl = "/images/products/freykicks_hero.webp",
-
-                Subtitle =
-                    "Sneakers, corporate shoes, and slides — for everyone."
-            });
-        }
-    }
-
-
-    private class HeroSlideData
-    {
-        public string Category { get; set; } = string.Empty;
-
-        public string ImageUrl { get; set; } = string.Empty;
-
+        public string Eyebrow { get; set; } = string.Empty;
+        public string Headline { get; set; } = string.Empty;
         public string Subtitle { get; set; } = string.Empty;
     }
 
+    private sealed class CategoryTileItem
+    {
+        public string Name { get; set; } = string.Empty;
+        public string ImageUrl { get; set; } = string.Empty;
+        public string Url { get; set; } = "/shop";
+    }
+
+    private sealed class GenderBannerItem
+    {
+        public string Title { get; set; } = string.Empty;
+        public string ImageUrl { get; set; } = string.Empty;
+        public string Url { get; set; } = "/shop";
+    }
+
+    private static readonly Dictionary<ProductCategory, HeroSlideCopy> HeroCategoryCopy = new()
+    {
+        [ProductCategory.Sneakers] = new() { Eyebrow = "Street ready", Headline = "Step out in style", Subtitle = "Cushioned comfort and clean looks for every day." },
+        [ProductCategory.Corporate] = new() { Eyebrow = "Office essentials", Headline = "Boardroom ready", Subtitle = "Polished shoes that carry you from desk to dinner." },
+        [ProductCategory.Slides] = new() { Eyebrow = "Easy wear", Headline = "Kick back, relax", Subtitle = "Soft, slip-on comfort for home, beach, and weekends." },
+        [ProductCategory.Canvas] = new() { Eyebrow = "Everyday classics", Headline = "Light, simple, easy", Subtitle = "Breathable canvas styles for casual days." },
+        [ProductCategory.Loafers] = new() { Eyebrow = "Smart casual", Headline = "Effortlessly sharp", Subtitle = "Slip into a refined look in seconds." },
+        [ProductCategory.Running] = new() { Eyebrow = "Cruise the miles", Headline = "Built for the pace", Subtitle = "Supportive, easy movement for daily wear." }
+    };
+
+    private List<Product> Products { get; set; } = new();
+    private List<HeroSlideItem> HeroSlides { get; set; } = new();
+    private List<Product> NewArrivals { get; set; } = new();
+    private List<Product> FeaturedProducts { get; set; } = new();
+    private List<CategoryTileItem> CategoryTiles { get; set; } = new();
+    private List<GenderBannerItem> GenderBanners { get; set; } = new();
+    private string? WhatsAppNumber { get; set; }
+
+    protected override void OnInitialized()
+    {
+        WhatsAppNumber = NormalizeWhatsAppNumber(Configuration["Contact:WhatsAppNumber"]);
+
+        Products = DbContext.Products
+            .AsNoTracking()
+            .Include(p => p.Variants)
+            .OrderByDescending(p => p.Id)
+            .ToList();
+
+        if (!Products.Any())
+        {
+            return;
+        }
+
+        HeroSlides = BuildHeroSlides();
+        NewArrivals = Products.Take(8).ToList();
+        FeaturedProducts = BuildFeaturedProducts();
+        CategoryTiles = BuildCategoryTiles();
+        GenderBanners = BuildGenderBanners();
+    }
+
+    private List<HeroSlideItem> BuildHeroSlides()
+    {
+        var categories = Enum.GetValues<ProductCategory>()
+            .Where(c => c != ProductCategory.General)
+            .ToList();
+
+        var slides = new List<HeroSlideItem>();
+
+        foreach (var category in categories)
+        {
+            var product = Products
+                .Where(p => p.Category == category)
+                .FirstOrDefault(p => !string.IsNullOrWhiteSpace(p.ImageUrls));
+
+            if (product is null)
+            {
+                continue;
+            }
+
+            var firstImage = product.ImageUrls?
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .FirstOrDefault();
+
+            if (string.IsNullOrWhiteSpace(firstImage))
+            {
+                continue;
+            }
+
+            var copy = HeroCategoryCopy.TryGetValue(category, out var heroCopy)
+                ? heroCopy
+                : new HeroSlideCopy
+                {
+                    Eyebrow = category.ToString(),
+                    Headline = category.ToString(),
+                    Subtitle = "Fresh styles, ready for your next step."
+                };
+
+            slides.Add(new HeroSlideItem
+            {
+                Category = category.ToString(),
+                Eyebrow = copy.Eyebrow,
+                Title = copy.Headline,
+                Subtitle = copy.Subtitle,
+                ImageUrl = firstImage,
+                Url = $"/shop?category={Uri.EscapeDataString(category.ToString())}",
+                LoadEagerly = slides.Count == 0
+            });
+        }
+
+        if (slides.Count == 0)
+        {
+            slides.Add(new HeroSlideItem
+            {
+                Category = "Shop",
+                Title = "Fresh pairs for every day",
+                Subtitle = "Sneakers, corporate shoes, and slides for your next step.",
+                ImageUrl = "/images/products/freykicks_hero.webp",
+                Url = "/shop"
+            });
+        }
+
+        return slides;
+    }
+
+    private List<Product> BuildFeaturedProducts()
+    {
+        return Products
+            .Where(p => p.Variants.Any(v => v.Stock > 0))
+            .OrderBy(_ => Guid.NewGuid())
+            .Take(4)
+            .ToList();
+    }
+
+    private List<CategoryTileItem> BuildCategoryTiles()
+    {
+        var list = new List<CategoryTileItem>();
+
+        foreach (var category in Enum.GetValues<ProductCategory>().Where(c => c != ProductCategory.General))
+        {
+            var product = Products
+                .Where(p => p.Category == category)
+                .FirstOrDefault(p => !string.IsNullOrWhiteSpace(p.ImageUrls));
+
+            var image = product?.ImageUrls?
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .FirstOrDefault();
+
+            if (product is null && image is null)
+            {
+                continue;
+            }
+
+            list.Add(new CategoryTileItem
+            {
+                Name = category.ToString(),
+                ImageUrl = image ?? "/images/products/freykicks_hero.webp",
+                Url = $"/shop?category={Uri.EscapeDataString(category.ToString())}"
+            });
+        }
+
+        return list;
+    }
+
+    private List<GenderBannerItem> BuildGenderBanners()
+    {
+        var items = new List<GenderBannerItem>();
+
+        foreach (var gender in new[] { Gender.Men, Gender.Women })
+        {
+            var product = Products
+                .Where(p => p.Gender == gender)
+                .FirstOrDefault(p => !string.IsNullOrWhiteSpace(p.ImageUrls));
+
+            var image = product?.ImageUrls?
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .FirstOrDefault();
+
+            items.Add(new GenderBannerItem
+            {
+                Title = gender.ToString(),
+                ImageUrl = image ?? "/images/products/freykicks_hero.webp",
+                Url = $"/shop?gender={Uri.EscapeDataString(gender.ToString())}"
+            });
+        }
+
+        return items;
+    }
+
+    private static string? NormalizeWhatsAppNumber(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var digits = new string(value.Where(char.IsDigit).ToArray());
+        if (string.IsNullOrWhiteSpace(digits))
+        {
+            return null;
+        }
+
+        return digits.TrimStart('0');
+    }
+
+    private string BuildWhatsAppUrl(string text)
+    {
+        if (string.IsNullOrWhiteSpace(WhatsAppNumber))
+        {
+            return string.Empty;
+        }
+
+        return $"https://wa.me/{WhatsAppNumber}?text={Uri.EscapeDataString(text)}";
+    }
 }
-
-
-<script>
-
-    (function () {
-
-        const carousel =
-            document.getElementById('heroCarousel');
-
-        if (!carousel) return;
-
-
-        const slides =
-            carousel.querySelectorAll('.hero-slide');
-
-        const dots =
-            carousel.querySelectorAll('.hero-dot');
-
-
-        let current = 0;
-        let timer;
-
-
-        function showSlide(index) {
-
-            slides.forEach((slide, i) => {
-
-                slide.classList.toggle(
-                    'active',
-                    i === index
-                );
-
-            });
-
-
-            dots.forEach((dot, i) => {
-
-                dot.classList.toggle(
-                    'active',
-                    i === index
-                );
-
-            });
-
-
-            current = index;
-        }
-
-
-        function nextSlide() {
-
-            if (slides.length === 0) return;
-
-            showSlide(
-                (current + 1) % slides.length
-            );
-
-        }
-
-
-        function startTimer() {
-
-            clearInterval(timer);
-
-            timer = setInterval(
-                nextSlide,
-                4000
-            );
-
-        }
-
-
-        dots.forEach((dot, i) => {
-
-            dot.addEventListener(
-                'click',
-                (e) => {
-
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    clearInterval(timer);
-
-                    showSlide(i);
-
-                    startTimer();
-
-                }
-            );
-
-        });
-
-
-        if (slides.length > 1) {
-
-            startTimer();
-
-        }
-
-    })();
-
-</script>
