@@ -1,0 +1,736 @@
+@page "/contact"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@inject IConfiguration Configuration
+@inject IJSRuntime JS
+
+<PageTitle>Contact Us | Frey Kicks</PageTitle>
+
+<div class="contact-page">
+    <section class="contact-hero">
+        <div class="contact-hero-inner">
+            <span class="contact-kicker">Contact</span>
+            <h1>Let's talk</h1>
+            <p>Questions about sizing, an order, or a style? We usually reply within a few hours.</p>
+
+            @if (!string.IsNullOrWhiteSpace(WhatsAppNumber))
+            {
+                <a class="btn btn-success contact-whatsapp-primary"
+                   href="@BuildWhatsAppUrl("Hello Frey Kicks, I have a question.")"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   aria-label="Chat on WhatsApp">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20.5 12.1c0 4.5-3.7 8.1-8.2 8.1a8.4 8.4 0 0 1-4-1.1L4 20.5l1.4-4.1A8 8 0 0 1 3.7 12c0-4.5 3.7-8.1 8.2-8.1s8.1 3.6 8.1 8.1Zm-8.2-5.6c-2.4 0-4.3 1.8-4.3 4.1 0 .9.3 1.8.8 2.5l.2.3-.5 1.5 1.5-.5.3.2c.7.4 1.5.6 2.4.6 2.4 0 4.3-1.8 4.3-4.1 0-2.3-1.8-4.1-4.3-4.1Zm2.6 5.3c-.1-.1-.2-.2-.5-.2-.2 0-.5.1-.8.3l-.2.2c-.1.1-.2.1-.3 0-.2-.1-.8-.4-1.4-.9-.5-.5-.8-1-1-1.3-.1-.3 0-.5.1-.7l.1-.2c.1-.1.1-.2 0-.3l-.3-.7c-.1-.1-.2-.1-.3-.2h-.3c-.1 0-.3.1-.4.2-.2.2-.6.6-.6 1.4 0 .8.6 1.6.8 2.1.2.4 1.5 2.3 3.5 3.1.5.2.9.4 1.2.5.5.2.9.2 1.2.1.4-.1 1.2-.5 1.3-1 .1-.5.1-.9 0-1.1l-.2-.3Z" fill="currentColor"/>
+                    </svg>
+                    Chat on WhatsApp
+                </a>
+            }
+        </div>
+    </section>
+
+    <div class="contact-grid">
+        <div class="contact-stack">
+            @if (!string.IsNullOrWhiteSpace(WhatsAppNumber))
+            {
+                <a class="contact-card contact-card--primary" href="@BuildWhatsAppUrl("Hello Frey Kicks, I have a question.")" target="_blank" rel="noopener noreferrer">
+                    <div class="contact-card__icon contact-card__icon--green">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M20.5 12.1c0 4.5-3.7 8.1-8.2 8.1a8.4 8.4 0 0 1-4-1.1L4 20.5l1.4-4.1A8 8 0 0 1 3.7 12c0-4.5 3.7-8.1 8.2-8.1s8.1 3.6 8.1 8.1Zm-8.2-5.6c-2.4 0-4.3 1.8-4.3 4.1 0 .9.3 1.8.8 2.5l.2.3-.5 1.5 1.5-.5.3.2c.7.4 1.5.6 2.4.6 2.4 0 4.3-1.8 4.3-4.1 0-2.3-1.8-4.1-4.3-4.1Zm2.6 5.3c-.1-.1-.2-.2-.5-.2-.2 0-.5.1-.8.3l-.2.2c-.1.1-.2.1-.3 0-.2-.1-.8-.4-1.4-.9-.5-.5-.8-1-1-1.3-.1-.3 0-.5.1-.7l.1-.2c.1-.1.1-.2 0-.3l-.3-.7c-.1-.1-.2-.1-.3-.2h-.3c-.1 0-.3.1-.4.2-.2.2-.6.6-.6 1.4 0 .8.6 1.6.8 2.1.2.4 1.5 2.3 3.5 3.1.5.2.9.4 1.2.5.5.2.9.2 1.2.1.4-.1 1.2-.5 1.3-1 .1-.5.1-.9 0-1.1l-.2-.3Z" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <div class="contact-card__body">
+                        <div class="contact-card__header">
+                            <span class="contact-card__label">WhatsApp</span>
+                            <span class="contact-chip">Fastest reply</span>
+                        </div>
+                        <span class="contact-card__value">@FormatPhoneDisplay(WhatsAppNumber)</span>
+                    </div>
+                </a>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Phone))
+            {
+                <a class="contact-card" href="tel:@PhoneClean" aria-label="Call us">
+                    <div class="contact-card__icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6.6 3.8c.6-.6 1.5-.6 2.1 0l1.4 1.4a1.5 1.5 0 0 1 0 2.1l-1 1c-.3.3-.4.7-.3 1.1.3 1.1 1.1 2.1 2.1 3.1s2 1.8 3.1 2.1c.4.1.8 0 1.1-.3l1-1a1.5 1.5 0 0 1 2.1 0l1.4 1.4c.6.6.6 1.5 0 2.1l-1.3 1.3c-.8.8-1.9 1.1-3 1-3.1-.4-6.1-2.2-8.5-4.7-2.5-2.5-4.2-5.5-4.7-8.6-.1-1.1.2-2.2 1-3l1.3-1.3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div class="contact-card__body">
+                        <span class="contact-card__label">Phone</span>
+                        <span class="contact-card__value">@Phone</span>
+                    </div>
+                </a>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Email))
+            {
+                <a class="contact-card" href="mailto:@Email" aria-label="Email us">
+                    <div class="contact-card__icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="3.5" y="5.5" width="17" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                            <path d="M4.5 7.5 12 13l7.5-5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div class="contact-card__body">
+                        <span class="contact-card__label">Email</span>
+                        <span class="contact-card__value">@Email</span>
+                    </div>
+                </a>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Instagram))
+            {
+                <a class="contact-card" href="@InstagramUrl" target="_blank" rel="noopener noreferrer" aria-label="Visit our Instagram">
+                    <div class="contact-card__icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                            <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                            <circle cx="17.2" cy="6.8" r="1" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <div class="contact-card__body">
+                        <span class="contact-card__label">Instagram</span>
+                        <span class="contact-card__value">@InstagramDisplay</span>
+                    </div>
+                </a>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Address) || !string.IsNullOrWhiteSpace(Hours))
+            {
+                <div class="contact-card contact-card--static">
+                    <div class="contact-card__icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="12" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                        </svg>
+                    </div>
+                    <div class="contact-card__body">
+                        @if (!string.IsNullOrWhiteSpace(Address))
+                        {
+                            <div class="contact-card__row">
+                                <span class="contact-card__label">Address</span>
+                                <span class="contact-card__value">@Address</span>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(Hours))
+                        {
+                            <div class="contact-card__row">
+                                <span class="contact-card__label">Hours</span>
+                                <span class="contact-card__value">@Hours</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="contact-message-panel">
+            <EditForm Model="FormModel" OnValidSubmit="HandleSubmitAsync">
+                <DataAnnotationsValidator />
+
+                <h2>Send us a message</h2>
+
+                <div class="mb-3">
+                    <label class="form-label" for="contact-name">Name</label>
+                    <InputText id="contact-name" class="form-control" @bind-Value="FormModel.Name" />
+                    <ValidationMessage For="() => FormModel.Name" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="contact-topic">Topic</label>
+                    <InputSelect id="contact-topic" class="form-select" @bind-Value="FormModel.Topic">
+                        @foreach (var option in TopicOptions)
+                        {
+                            <option value="@option">@option</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => FormModel.Topic" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="contact-message">Message</label>
+                    <InputTextArea id="contact-message" class="form-control" rows="6" @bind-Value="FormModel.Message" />
+                    <div class="contact-message-meta">
+                        <span class="form-text">We usually reply within a few hours.</span>
+                        <span class="contact-char-count" aria-live="polite">@(FormModel.Message?.Length ?? 0) / 1000</span>
+                    </div>
+                    <ValidationMessage For="() => FormModel.Message" />
+                </div>
+
+                <button type="submit" class="btn btn-dark contact-submit" disabled="@IsSubmitting">
+                    @(IsSubmitting ? "Opening WhatsApp..." : "Send via WhatsApp")
+                </button>
+
+                <p class="contact-form-note">This opens WhatsApp with your message ready to send.</p>
+
+                @if (ShowConfirmation)
+                {
+                    <div class="contact-confirmation" role="status" aria-live="polite">
+                        <span>WhatsApp should open. If it didn't,</span>
+                        <a href="@FallbackUrl" target="_blank" rel="noopener noreferrer">tap here</a>
+                        <button type="button" class="contact-dismiss" @onclick="DismissConfirmation">Dismiss</button>
+                    </div>
+                }
+            </EditForm>
+        </div>
+    </div>
+
+    <section class="faq-panel">
+        <div class="faq-panel__header">
+            <h2>Frequently asked questions</h2>
+        </div>
+
+        <div class="faq-list">
+            @foreach (var faq in FaqItems)
+            {
+                var index = FaqItems.IndexOf(faq);
+                var isOpen = OpenFaqIndex == index;
+
+                <div class="faq-item @(isOpen ? "faq-item--open" : string.Empty)">
+                    <button type="button" class="faq-question" @onclick="() => ToggleFaq(index)" aria-expanded="@(isOpen ? "true" : "false")">
+                        <span>@faq.Question</span>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+
+                    @if (isOpen)
+                    {
+                        <div class="faq-answer">
+                            @faq.Answer
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+</div>
+
+<style>
+    .contact-page {
+        max-width: 1160px;
+        margin: 0 auto;
+        padding: 24px 16px 72px;
+    }
+
+    .contact-hero {
+        background: linear-gradient(135deg, #ffffff 0%, #f7f7f4 100%);
+        border: 1px solid rgba(17, 17, 17, 0.06);
+        border-radius: 20px;
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.05);
+        margin-bottom: 28px;
+        padding: 28px;
+    }
+
+    .contact-hero-inner {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .contact-kicker {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(22, 163, 74, 0.08);
+        color: #166534;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .contact-hero h1 {
+        margin: 0;
+        font-size: clamp(2.25rem, 4vw, 4rem);
+        line-height: 1.05;
+        letter-spacing: -0.05em;
+        color: #111111;
+    }
+
+    .contact-hero p {
+        margin: 0;
+        max-width: 760px;
+        color: #4b5563;
+        font-size: 1.03rem;
+    }
+
+    .contact-whatsapp-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 8px;
+        padding: 0.85rem 1.35rem;
+        border-radius: 999px;
+        font-weight: 600;
+        box-shadow: 0 10px 24px rgba(22, 163, 74, 0.2);
+    }
+
+    .contact-whatsapp-primary svg,
+    .contact-card__icon svg,
+    .faq-question svg {
+        width: 20px;
+        height: 20px;
+        display: block;
+    }
+
+    .contact-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+        gap: 28px;
+        align-items: start;
+    }
+
+    .contact-stack {
+        display: grid;
+        gap: 16px;
+    }
+
+    .contact-card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        width: 100%;
+        background: #ffffff;
+        border: 1px solid rgba(17, 17, 17, 0.06);
+        border-radius: 16px;
+        padding: 18px 18px;
+        text-decoration: none;
+        color: #111111;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .contact-card:hover,
+    .contact-card:focus-visible {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+        text-decoration: none;
+        color: #111111;
+        border-color: rgba(17, 17, 17, 0.12);
+    }
+
+    .contact-card:focus-visible,
+    .btn:focus-visible,
+    .form-control:focus,
+    .form-select:focus,
+    .faq-question:focus-visible,
+    .contact-dismiss:focus-visible {
+        outline: 3px solid rgba(17, 17, 17, 0.22);
+        outline-offset: 2px;
+    }
+
+    .contact-card--primary {
+        background: rgba(34, 197, 94, 0.08);
+        border-color: rgba(34, 197, 94, 0.16);
+    }
+
+    .contact-card__icon {
+        flex-shrink: 0;
+        width: 52px;
+        height: 52px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #f3f4f6;
+        color: #111111;
+    }
+
+    .contact-card__icon--green {
+        background: rgba(34, 197, 94, 0.15);
+        color: #166534;
+    }
+
+    .contact-card__body {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .contact-card__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .contact-card__label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #6b7280;
+        font-weight: 700;
+    }
+
+    .contact-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: rgba(34, 197, 94, 0.12);
+        color: #166534;
+        font-size: 0.68rem;
+        font-weight: 700;
+    }
+
+    .contact-card__value {
+        font-size: 1rem;
+        color: #111111;
+        line-height: 1.4;
+        word-break: break-word;
+    }
+
+    .contact-card--static {
+        align-items: flex-start;
+        background: #ffffff;
+        border-color: rgba(17, 17, 17, 0.06);
+    }
+
+    .contact-card__row {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .contact-message-panel {
+        background: #ffffff;
+        border: 1px solid rgba(17, 17, 17, 0.06);
+        border-radius: 16px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+        padding: 24px;
+    }
+
+    .contact-message-panel h2,
+    .faq-panel h2 {
+        margin: 0 0 18px;
+        font-size: clamp(1.5rem, 2vw, 2rem);
+        letter-spacing: -0.04em;
+        color: #111111;
+    }
+
+    .form-label {
+        color: #111111;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .form-control,
+    .form-select,
+    .form-control:focus,
+    .form-select:focus {
+        border-radius: 12px;
+        border-color: rgba(17, 17, 17, 0.12);
+        box-shadow: none;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: rgba(17, 17, 17, 0.3);
+    }
+
+    .validation-message,
+    .text-danger,
+    .field-validation-error {
+        color: #b42318;
+        font-size: 0.83rem;
+        margin-top: 6px;
+        display: block;
+    }
+
+    .contact-message-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 6px;
+        color: #6b7280;
+        font-size: 0.8rem;
+    }
+
+    .contact-char-count {
+        font-weight: 600;
+        color: #111111;
+    }
+
+    .contact-submit {
+        width: 100%;
+        padding: 0.9rem 1.2rem;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+
+    .contact-form-note {
+        margin: 12px 0 0;
+        color: #6b7280;
+        text-align: center;
+        font-size: 0.88rem;
+    }
+
+    .contact-confirmation {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 16px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.18);
+        color: #155a2a;
+        font-size: 0.92rem;
+    }
+
+    .contact-confirmation a {
+        color: #0f172a;
+        font-weight: 700;
+        text-decoration: underline;
+    }
+
+    .contact-dismiss {
+        margin-left: auto;
+        border: 0;
+        background: transparent;
+        color: #111111;
+        font-weight: 600;
+        padding: 4px 6px;
+        border-radius: 8px;
+    }
+
+    .faq-panel {
+        margin-top: 30px;
+        background: #ffffff;
+        border: 1px solid rgba(17, 17, 17, 0.06);
+        border-radius: 20px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+        padding: 24px;
+    }
+
+    .faq-list {
+        display: grid;
+        gap: 12px;
+    }
+
+    .faq-item {
+        border: 1px solid rgba(17, 17, 17, 0.08);
+        border-radius: 14px;
+        overflow: hidden;
+        background: #fafafa;
+    }
+
+    .faq-question {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border: 0;
+        background: transparent;
+        padding: 18px 18px;
+        color: #111111;
+        font-weight: 600;
+        text-align: left;
+    }
+
+    .faq-question svg {
+        transition: transform 0.2s ease;
+        color: #111111;
+    }
+
+    .faq-item--open .faq-question svg {
+        transform: rotate(180deg);
+    }
+
+    .faq-answer {
+        padding: 0 18px 18px;
+        color: #4b5563;
+        line-height: 1.7;
+    }
+
+    @@media (max-width: 991.98px) {
+        .contact-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width: 575.98px) {
+        .contact-page {
+            padding-left: 12px;
+            padding-right: 12px;
+        }
+
+        .contact-hero,
+        .contact-message-panel,
+        .faq-panel {
+            padding: 18px 16px;
+        }
+
+        .contact-card {
+            padding: 14px 14px;
+        }
+
+        .contact-submit {
+            width: 100%;
+        }
+
+        .contact-message-meta {
+            display: block;
+        }
+    }
+</style>
+
+@code {
+    private sealed class ContactFormModel
+    {
+        [Required(ErrorMessage = "Please enter your name.")]
+        [StringLength(100, ErrorMessage = "Name must be 100 characters or fewer.")]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Please choose a topic.")]
+        public string Topic { get; set; } = "Order help";
+
+        [Required(ErrorMessage = "Please enter a message.")]
+        [StringLength(1000, MinimumLength = 10, ErrorMessage = "Message must be between 10 and 1000 characters.")]
+        public string Message { get; set; } = string.Empty;
+    }
+
+    private sealed record FaqItem(string Question, string Answer);
+
+    private readonly List<FaqItem> FaqItems =
+    [
+        new("How long does delivery take?", "Most orders are packed within 24 hours and delivered within 3 to 7 working days across Nigeria, depending on your location."),
+        new("Can I return or exchange an item?", "Yes. We accept returns or exchanges for unworn items within a set time window if they are in their original condition and packaging."),
+        new("How do I choose the right size?", "Check the size guide on the product page, and if you're unsure, send us the style and size you usually wear and we’ll help you choose."),
+        new("What payment methods do you accept?", "We support secure card payments and bank transfers where available. You can confirm the payment options on your checkout page or by messaging us."),
+        new("How can I track my order?", "Once your order is shipped, we’ll send you the tracking details or update you through WhatsApp with the latest status.")
+    ];
+
+    private ContactFormModel FormModel { get; set; } = new();
+    private bool IsSubmitting { get; set; }
+    private bool ShowConfirmation { get; set; }
+    private string? FallbackUrl { get; set; }
+    private int OpenFaqIndex { get; set; } = 0;
+
+    private string? WhatsAppNumber { get; set; }
+    private string? Phone { get; set; }
+    private string? Email { get; set; }
+    private string? Instagram { get; set; }
+    private string? Address { get; set; }
+    private string? Hours { get; set; }
+
+    private string? PhoneClean => string.IsNullOrWhiteSpace(Phone) ? null : new string(Phone.Where(char.IsDigit).ToArray());
+
+    private string InstagramUrl => $"https://instagram.com/{InstagramDisplay.TrimStart('@')}";
+    private string InstagramDisplay => Instagram?.Trim().TrimStart('@') ?? string.Empty;
+
+    private static readonly string[] TopicOptions =
+    [
+        "Order help",
+        "Sizing and fit",
+        "Product question",
+        "Returns and exchange",
+        "Something else"
+    ];
+
+    protected override void OnInitialized()
+    {
+        var contact = Configuration.GetSection("Contact");
+
+        WhatsAppNumber = NormalizeWhatsAppNumber(contact["WhatsAppNumber"]);
+        Phone = contact["Phone"];
+        Email = contact["Email"];
+        Instagram = contact["Instagram"];
+        Address = contact["Address"];
+        Hours = contact["Hours"];
+    }
+
+    private static string? NormalizeWhatsAppNumber(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var digits = new string(value.Where(char.IsDigit).ToArray());
+        if (string.IsNullOrWhiteSpace(digits))
+        {
+            return null;
+        }
+
+        return digits.TrimStart('0');
+    }
+
+    private string FormatPhoneDisplay(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var digits = new string(value.Where(char.IsDigit).ToArray());
+        if (string.IsNullOrWhiteSpace(digits))
+        {
+            return value.Trim();
+        }
+
+        if (digits.Length < 10)
+        {
+            return value.Trim();
+        }
+
+        return $"+{digits[..^10]} {digits[^10..^7]} {digits[^7..^4]} {digits[^4..]}";
+    }
+
+    private string BuildWhatsAppUrl(string text)
+    {
+        if (string.IsNullOrWhiteSpace(WhatsAppNumber))
+        {
+            return string.Empty;
+        }
+
+        return $"https://wa.me/{WhatsAppNumber}?text={Uri.EscapeDataString(text)}";
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        if (IsSubmitting || string.IsNullOrWhiteSpace(WhatsAppNumber))
+        {
+            return;
+        }
+
+        IsSubmitting = true;
+
+        try
+        {
+            var message = $"Hi Frey Kicks! I'm {FormModel.Name.Trim()}. Topic: {FormModel.Topic}. {FormModel.Message.Trim()}";
+            var url = BuildWhatsAppUrl(message);
+
+            FallbackUrl = url;
+            ShowConfirmation = true;
+
+            await JS.InvokeVoidAsync("open", url, "_blank", "noopener,noreferrer");
+        }
+        finally
+        {
+            IsSubmitting = false;
+        }
+    }
+
+    private void DismissConfirmation()
+    {
+        ShowConfirmation = false;
+        FallbackUrl = null;
+    }
+
+    private void ToggleFaq(int index)
+    {
+        OpenFaqIndex = OpenFaqIndex == index ? -1 : index;
+    }
+}
