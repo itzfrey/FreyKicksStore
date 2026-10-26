@@ -11,13 +11,20 @@
 
 @if (Product is null)
 {
-    <p>Loading...</p>
+    <div class="product-page-shell product-page-shell--loading">
+        <div class="loading-card">
+            <div class="loading-line loading-line--title"></div>
+            <div class="loading-line"></div>
+            <div class="loading-line"></div>
+            <div class="loading-line loading-line--short"></div>
+        </div>
+    </div>
 }
 else
 {
-    <div class="container py-4">
-        <nav aria-label="breadcrumb" class="mb-4">
-            <ol class="breadcrumb mb-0">
+    <div class="product-page-shell">
+        <nav aria-label="breadcrumb" class="product-breadcrumb-wrap">
+            <ol class="breadcrumb product-breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="/">Home</a></li>
                 <li class="breadcrumb-item"><a href="/shop?gender=@Product.Gender">@Product.Gender</a></li>
                 <li class="breadcrumb-item"><a href="/shop?gender=@Product.Gender&category=@Product.Category">@Product.Category</a></li>
@@ -25,56 +32,79 @@ else
             </ol>
         </nav>
 
-        <div class="row g-4">
-            <div class="col-lg-6">
+        <div class="product-layout">
+            <div class="gallery-panel">
                 @if (ImageUrls.Count > 0)
                 {
-                    <div class="mb-3 border rounded overflow-hidden bg-light" style="height:520px; display:flex; align-items:center; justify-content:center;">
-                        <img src="@SelectedImage" alt="@Product.Name" style="max-height:100%; max-width:100%; object-fit:contain;" />
+                    <div class="gallery-main-wrap">
+                        <button type="button" class="gallery-main-button" @onclick="OpenLightbox" aria-label="Open product image gallery">
+                            <img src="@SelectedImage" alt="@Product.Name" class="gallery-main-image" />
+                        </button>
                     </div>
 
-                    <div class="d-flex flex-wrap gap-2">
-                        @foreach (var image in ImageUrls)
+                    <div class="thumbnail-row" aria-label="Product gallery thumbnails">
+                        @for (var i = 0; i < ImageUrls.Count; i++)
                         {
-                            <button type="button" class="btn btn-link p-0 border @(SelectedImage == image ? "border-dark" : "border-light")" @onclick="() => SelectedImage = image" style="width:72px; height:72px; overflow:hidden;">
-                                <img src="@image" alt="@Product.Name thumbnail" style="width:100%; height:100%; object-fit:cover;" />
+                            var image = ImageUrls[i];
+                            var isSelected = SelectedImage == image;
+                            <button type="button"
+                                    class="thumbnail-button @(isSelected ? "is-selected" : string.Empty)"
+                                    @onclick="() => SelectImage(i)"
+                                    aria-label="Select product image @(i + 1)">
+                                <img src="@image" alt="@Product.Name thumbnail @(i + 1)" />
                             </button>
                         }
                     </div>
                 }
                 else
                 {
-                    <div class="border rounded bg-light d-flex align-items-center justify-content-center text-muted" style="height:520px;">
-                        No image
+                    <div class="gallery-placeholder">
+                        <span>No image</span>
                     </div>
                 }
             </div>
 
-            <div class="col-lg-6">
-                <h2 class="mb-3">@Product.Name</h2>
-                <p class="h4 mb-3">₦@CurrentPrice.ToString("N2")</p>
+            <div class="buy-panel">
+                <div class="meta-row">
+                    <span>@Product.Category</span>
+                    <span class="meta-divider">•</span>
+                    <span class="meta-badge">@Product.Gender</span>
+                </div>
+
+                <h1>@Product.Name</h1>
+                <div class="price-row">
+                    <span class="price">₦@CurrentPrice.ToString("N2")</span>
+                    <span class="status-pill @(SelectedVariant is not null && SelectedVariant.Stock <= 5 && SelectedVariant.Stock > 0 ? "status-low" : SelectedVariant is not null && SelectedVariant.Stock <= 0 ? "status-out" : "status-good")">
+                        @(SelectedVariant is not null && SelectedVariant.Stock <= 0 ? "Sold out" : SelectedVariant is not null && SelectedVariant.Stock <= 5 ? $"Only {SelectedVariant.Stock} left" : "In stock")
+                    </span>
+                </div>
 
                 @if (!string.IsNullOrWhiteSpace(Product.Description))
                 {
-                    <p class="text-secondary mb-4">@Product.Description</p>
+                    <p class="product-description">@Product.Description</p>
                 }
 
                 @if (AvailableColors.Count > 0)
                 {
-                    <div class="mb-4">
-                        <div class="fw-semibold mb-2">Color</div>
-                        <div class="d-flex flex-wrap gap-2">
+                    <div class="option-block">
+                        <div class="option-header">
+                            <span>Color</span>
+                            <span class="option-value">@SelectedColor</span>
+                        </div>
+                        <div class="option-group option-group--swatches">
                             @foreach (var color in AvailableColors)
                             {
                                 var isSoldOut = IsColorSoldOut(color);
                                 var isSelected = SelectedColor == color;
                                 <button type="button"
-                                        class="btn btn-sm @(isSelected ? "btn-dark" : isSoldOut ? "btn-outline-secondary soldout-color" : "btn-outline-dark")"
-                                        @onclick="() => SelectColor(color)">
+                                        class="color-swatch @(isSelected ? "is-selected" : string.Empty) @(isSoldOut ? "is-sold-out" : string.Empty)"
+                                        @onclick="() => SelectColor(color)"
+                                        aria-label="Select @color color">
+                                    <span class="swatch-dot" style="background:@GetColorSwatch(color)"></span>
                                     <span>@color</span>
                                     @if (isSoldOut)
                                     {
-                                        <span class="color-sold-tag">Sold out</span>
+                                        <span class="sold-tag">Sold out</span>
                                     }
                                 </button>
                             }
@@ -84,16 +114,19 @@ else
 
                 @if (!string.IsNullOrWhiteSpace(SelectedColor) && AvailableSizes.Count > 0)
                 {
-                    <div class="mb-4">
-                        <div class="fw-semibold mb-2">Size</div>
-                        <div class="d-flex flex-wrap gap-2">
+                    <div class="option-block">
+                        <div class="option-header">
+                            <span>Size</span>
+                            <span class="option-value">@SelectedSize</span>
+                        </div>
+                        <div class="size-grid">
                             @foreach (var size in AvailableSizes)
                             {
                                 var variant = Product?.Variants.FirstOrDefault(v => v.Color == SelectedColor && v.Size == size);
                                 var isSoldOut = variant is null || variant.Stock <= 0;
                                 var isSelected = SelectedSize == size;
                                 <button type="button"
-                                        class="btn btn-sm size-button @(isSelected ? "btn-dark" : "btn-outline-dark") @(isSoldOut ? "soldout-size" : string.Empty)"
+                                        class="size-button @(isSelected ? "is-selected" : string.Empty) @(isSoldOut ? "is-sold-out" : string.Empty)"
                                         disabled="@isSoldOut"
                                         aria-disabled="@(isSoldOut ? "true" : null)"
                                         title="@(isSoldOut ? "Sold out" : null)"
@@ -117,35 +150,104 @@ else
 
                 @if (SelectedVariant is not null && SelectedVariant.Stock > 0)
                 {
-                    <div class="d-flex align-items-center gap-3 mb-4">
-                        <div class="d-flex align-items-center border rounded quantity-box">
-                            <button type="button" class="btn btn-light border-0 quantity-button" @onclick="DecreaseQuantity" disabled="@(Quantity <= 1)" aria-label="Decrease quantity">−</button>
-                            <span class="px-3 fw-semibold">@Quantity</span>
-                            <button type="button" class="btn btn-light border-0 quantity-button" @onclick="IncreaseQuantity" disabled="@(Quantity >= MaxAddableQuantityForSelectedVariant)" aria-label="Increase quantity">+</button>
+                    <div class="quantity-block">
+                        <div class="quantity-label">Quantity</div>
+                        <div class="quantity-stepper">
+                            <button type="button" @onclick="DecreaseQuantity" disabled="@(Quantity <= 1)" aria-label="Decrease quantity">−</button>
+                            <span>@Quantity</span>
+                            <button type="button" @onclick="IncreaseQuantity" disabled="@(Quantity >= MaxAddableQuantityForSelectedVariant)" aria-label="Increase quantity">+</button>
                         </div>
                     </div>
                 }
 
                 @if (!string.IsNullOrWhiteSpace(SelectionMessage))
                 {
-                    <div class="alert alert-warning py-2 mb-3">@SelectionMessage</div>
+                    <div class="inline-alert">@SelectionMessage</div>
                 }
 
                 @if (IsProductSoldOut)
                 {
-                    <div class="d-flex flex-wrap gap-2">
-                        <button type="button" class="btn btn-secondary" disabled aria-disabled="true">Sold out</button>
+                    <div class="cta-stack">
+                        <button type="button" class="cta-button cta-button--soldout" disabled aria-disabled="true">Sold out</button>
                     </div>
                 }
                 else
                 {
-                    <div class="d-flex flex-wrap gap-2">
-                        <button type="button" class="btn btn-dark" disabled="@(!CanAddSelectedVariant)" aria-disabled="@(!CanAddSelectedVariant ? "true" : null)" @onclick="AddToCart">Add to Cart</button>
-                        <button type="button" class="btn btn-outline-dark" disabled="@(!CanAddSelectedVariant)" aria-disabled="@(!CanAddSelectedVariant ? "true" : null)" @onclick="BuyItNow">Buy It Now</button>
+                    <div class="cta-stack">
+                        <button type="button" class="cta-button cta-button--primary" disabled="@(!CanAddSelectedVariant)" aria-disabled="@(!CanAddSelectedVariant ? "true" : null)" @onclick="AddToCart">Add to Cart</button>
+                        <button type="button" class="cta-button cta-button--secondary" disabled="@(!CanAddSelectedVariant)" aria-disabled="@(!CanAddSelectedVariant ? "true" : null)" @onclick="BuyItNow">Buy It Now</button>
                     </div>
                 }
+
+                <a class="whatsapp-link" href="@BuildWhatsAppUrl()" target="_blank" rel="noopener noreferrer">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 12.1A8.4 8.4 0 0 1 12.1 20a8.2 8.2 0 0 1-3.9-1l-4.4 1.1 1.1-4.2A8.5 8.5 0 1 1 20.5 12.1Zm-8.3-5.5c-2.5 0-4.4 1.8-4.4 4.1 0 .9.3 1.7.8 2.4l.2.2-.5 1.5 1.5-.5.2.2c.7.4 1.5.6 2.4.6 2.5 0 4.4-1.8 4.4-4.1 0-2.3-1.9-4.1-4.4-4.1Zm2.6 5.2c-.1-.1-.2-.2-.5-.2-.2 0-.5.1-.8.3l-.2.2c-.1.1-.2.1-.3 0-.2-.1-.8-.4-1.3-.9-.5-.5-.8-1.1-1-1.3-.1-.3 0-.5.1-.7l.1-.2c.1-.1.1-.2 0-.3l-.4-.8c-.1-.1-.2-.1-.3-.2h-.3c-.1 0-.3.1-.4.2-.2.2-.6.7-.6 1.5 0 .8.7 1.8.9 2.2.2.4 1.4 2.2 3.4 3 .5.2.9.3 1.2.4.5.2.9.2 1.2.1.4-.1 1.3-.5 1.4-1.1.1-.5.1-.9 0-1.1l-.2-.3Z" fill="currentColor"/></svg>
+                    Ask about this product on WhatsApp
+                </a>
+
+                <ul class="trust-list">
+                    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8 5.5 5v5.8c0 4.7 3.1 8.9 6.5 10.4 3.4-1.5 6.5-5.7 6.5-10.4V5L12 2.8Zm-1.2 10.4 3.3-3.3 1.4 1.4-4.7 4.7-2.8-2.8 1.4-1.4 1.4 1.4Z" fill="currentColor"/></svg> Secure checkout</li>
+                    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8 5.5 5v5.8c0 4.7 3.1 8.9 6.5 10.4 3.4-1.5 6.5-5.7 6.5-10.4V5L12 2.8Zm-1.2 10.4 3.3-3.3 1.4 1.4-4.7 4.7-2.8-2.8 1.4-1.4 1.4 1.4Z" fill="currentColor"/></svg> Easy returns</li>
+                    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8 5.5 5v5.8c0 4.7 3.1 8.9 6.5 10.4 3.4-1.5 6.5-5.7 6.5-10.4V5L12 2.8Zm-1.2 10.4 3.3-3.3 1.4 1.4-4.7 4.7-2.8-2.8 1.4-1.4 1.4 1.4Z" fill="currentColor"/></svg> Delivery across Nigeria</li>
+                </ul>
             </div>
         </div>
+
+        <div class="detail-section">
+            <details class="detail-panel" open>
+                <summary>Description</summary>
+                <div class="detail-content">
+                    @if (!string.IsNullOrWhiteSpace(Product.Description))
+                    {
+                        @foreach (var paragraph in Product.Description.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None))
+                        {
+                            <p>@paragraph</p>
+                        }
+                    }
+                    else
+                    {
+                        <p>No description yet.</p>
+                    }
+                </div>
+            </details>
+
+            <details class="detail-panel">
+                <summary>Product details</summary>
+                <div class="detail-content">
+                    <dl class="spec-grid">
+                        <div><dt>Category</dt><dd>@Product.Category</dd></div>
+                        <div><dt>Gender</dt><dd>@Product.Gender</dd></div>
+                        <div><dt>Available colors</dt><dd>@string.Join(", ", AvailableColors)</dd></div>
+                        <div><dt>Available sizes</dt><dd>@string.Join(", ", AvailableSizesFor(SelectedColor ?? string.Empty).DefaultIfEmpty("—"))</dd></div>
+                        <div><dt>SKU</dt><dd>@(SelectedVariant?.Sku ?? "—")</dd></div>
+                    </dl>
+                </div>
+            </details>
+
+            <details class="detail-panel">
+                <summary>Delivery and returns</summary>
+                <div class="detail-content">
+                    <p>Delivery is available across Nigeria for eligible orders.</p>
+                    <p>Returns are handled with care and are subject to our standard return review.</p>
+                    <p>You can reach us for help with sizing, availability, or order questions anytime.</p>
+                </div>
+            </details>
+        </div>
+
+        @if (RelatedProducts.Count > 0)
+        {
+            <section class="related-section" aria-labelledby="related-products-title">
+                <div class="related-header">
+                    <h2 id="related-products-title">You may also like</h2>
+                </div>
+
+                <div class="related-grid">
+                    @foreach (var relatedProduct in RelatedProducts)
+                    {
+                        <ProductCard Product="relatedProduct" />
+                    }
+                </div>
+            </section>
+        }
     </div>
 }
 
@@ -154,7 +256,608 @@ else
     <div class="cart-toast" role="status" aria-live="polite">✓ Added to cart</div>
 }
 
+@if (IsLightboxOpen)
+{
+    <div class="lightbox-overlay" @onclick="CloseLightbox">
+        <div class="lightbox-panel" @onclick:stopPropagation>
+            <button type="button" class="lightbox-close" @onclick="CloseLightbox" aria-label="Close product image">×</button>
+            <button type="button" class="lightbox-nav lightbox-nav--prev" @onclick="() => MoveLightbox(-1)" aria-label="Previous image">‹</button>
+            <button type="button" class="lightbox-nav lightbox-nav--next" @onclick="() => MoveLightbox(1)" aria-label="Next image">›</button>
+            <img src="@ImageUrls[LightboxIndex]" alt="@Product.Name" class="lightbox-image" />
+        </div>
+    </div>
+}
+
 <style>
+    :root {
+        --fk-bg: #f7f6f2;
+        --fk-card: #ffffff;
+        --fk-border: rgba(17, 17, 17, 0.08);
+        --fk-text: #111111;
+        --fk-muted: #5f6368;
+        --fk-soft: #f3f4f6;
+        --fk-success: #1b7f4b;
+        --fk-warning: #b65d00;
+        --fk-danger: #b42318;
+    }
+
+    .product-page-shell {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 18px 18px 100px;
+    }
+
+    .product-breadcrumb-wrap {
+        padding-bottom: 12px;
+    }
+
+    .product-breadcrumb {
+        --bs-breadcrumb-divider: "/";
+        font-size: 0.82rem;
+        color: var(--fk-muted);
+    }
+
+    .product-breadcrumb a {
+        color: var(--fk-muted);
+        text-decoration: none;
+    }
+
+    .product-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.8fr);
+        gap: 32px;
+        align-items: start;
+    }
+
+    .gallery-panel {
+        min-width: 0;
+    }
+
+    .gallery-main-wrap {
+        border-radius: 24px;
+        overflow: hidden;
+        border: 1px solid var(--fk-border);
+        background: var(--fk-card);
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+    }
+
+    .gallery-main-button {
+        display: block;
+        width: 100%;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    .gallery-main-image {
+        display: block;
+        width: 100%;
+        max-height: 720px;
+        object-fit: contain;
+        background: linear-gradient(180deg, #ffffff, #f2f2f1);
+    }
+
+    .thumbnail-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+    }
+
+    .thumbnail-button {
+        width: 84px;
+        height: 84px;
+        padding: 0;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid var(--fk-border);
+        background: var(--fk-card);
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.03);
+        transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .thumbnail-button.is-selected {
+        border-color: var(--fk-text);
+        box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.1);
+    }
+
+    .thumbnail-button img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .gallery-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 540px;
+        border-radius: 24px;
+        border: 1px solid var(--fk-border);
+        background: #f2f2f2;
+        color: var(--fk-muted);
+        font-weight: 600;
+    }
+
+    .buy-panel {
+        position: sticky;
+        top: 24px;
+        border: 1px solid var(--fk-border);
+        border-radius: 26px;
+        background: var(--fk-card);
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.04);
+        padding: 24px;
+    }
+
+    .meta-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.75rem;
+        color: var(--fk-muted);
+        margin-bottom: 14px;
+    }
+
+    .meta-divider {
+        opacity: 0.5;
+    }
+
+    .meta-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 8px;
+        border-radius: 999px;
+        background: var(--fk-soft);
+        color: var(--fk-text);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+    }
+
+    .buy-panel h1 {
+        margin: 0;
+        font-size: clamp(2rem, 2vw + 1rem, 3.1rem);
+        line-height: 1.02;
+        letter-spacing: -0.06em;
+    }
+
+    .price-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 18px;
+    }
+
+    .price {
+        font-size: clamp(2rem, 1vw + 1.5rem, 2.8rem);
+        font-weight: 800;
+        letter-spacing: -0.06em;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 32px;
+        padding: 0.4rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        border: 1px solid transparent;
+    }
+
+    .status-good {
+        background: rgba(27, 127, 75, 0.12);
+        color: var(--fk-success);
+        border-color: rgba(27, 127, 75, 0.2);
+    }
+
+    .status-low {
+        background: rgba(182, 93, 0, 0.12);
+        color: var(--fk-warning);
+        border-color: rgba(182, 93, 0, 0.2);
+    }
+
+    .status-out {
+        background: rgba(180, 35, 24, 0.12);
+        color: var(--fk-danger);
+        border-color: rgba(180, 35, 24, 0.18);
+    }
+
+    .product-description {
+        margin-top: 20px;
+        color: rgba(17, 17, 17, 0.72);
+        line-height: 1.7;
+    }
+
+    .option-block {
+        margin-top: 22px;
+    }
+
+    .option-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+
+    .option-value {
+        color: var(--fk-muted);
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+
+    .option-group--swatches {
+        display: grid;
+        gap: 10px;
+    }
+
+    .color-swatch {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        min-height: 52px;
+        border: 1px solid var(--fk-border);
+        background: var(--fk-card);
+        border-radius: 12px;
+        color: var(--fk-text);
+        padding: 10px 12px;
+        text-align: left;
+    }
+
+    .color-swatch.is-selected {
+        border-color: var(--fk-text);
+        box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.08);
+    }
+
+    .color-swatch.is-sold-out {
+        opacity: 0.72;
+        background: var(--fk-soft);
+        color: var(--fk-muted);
+    }
+
+    .swatch-dot {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        display: inline-block;
+        border: 1px solid rgba(17, 17, 17, 0.14);
+        flex-shrink: 0;
+    }
+
+    .sold-tag {
+        margin-left: auto;
+        font-size: 0.66rem;
+        font-weight: 700;
+        background: rgba(17, 17, 17, 0.06);
+        border-radius: 999px;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .size-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+        gap: 10px;
+    }
+
+    .size-button {
+        min-height: 46px;
+        border-radius: 12px;
+        border: 1px solid var(--fk-border);
+        background: var(--fk-card);
+        color: var(--fk-text);
+        font-weight: 700;
+    }
+
+    .size-button.is-selected {
+        background: var(--fk-text);
+        color: #ffffff;
+        border-color: var(--fk-text);
+    }
+
+    .size-button.is-sold-out {
+        background: var(--fk-soft);
+        color: #adb5bd;
+        text-decoration: line-through;
+        text-decoration-thickness: 2px;
+    }
+
+    .stock-hint {
+        margin-top: 8px;
+        font-size: 0.8rem;
+        color: var(--fk-danger);
+        font-weight: 700;
+    }
+
+    .quantity-block {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-top: 22px;
+    }
+
+    .quantity-label {
+        font-weight: 700;
+    }
+
+    .quantity-stepper {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 48px;
+        padding: 4px 8px;
+        border: 1px solid var(--fk-border);
+        border-radius: 999px;
+        background: var(--fk-card);
+    }
+
+    .quantity-stepper button {
+        width: 32px;
+        height: 32px;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--fk-text);
+        font-size: 1.5rem;
+        line-height: 1;
+    }
+
+    .quantity-stepper button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    .quantity-stepper span {
+        min-width: 22px;
+        text-align: center;
+        font-weight: 700;
+    }
+
+    .inline-alert {
+        margin-top: 18px;
+        padding: 0.8rem 0.9rem;
+        border-radius: 12px;
+        background: #fff4e5;
+        border: 1px solid rgba(182, 93, 0, 0.2);
+        color: var(--fk-warning);
+        font-weight: 600;
+    }
+
+    .cta-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 18px;
+    }
+
+    .cta-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 52px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        font-weight: 700;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .cta-button--primary {
+        background: var(--fk-text);
+        color: #fff;
+        box-shadow: 0 14px 28px rgba(17, 17, 17, 0.12);
+    }
+
+    .cta-button--secondary {
+        background: transparent;
+        color: var(--fk-text);
+        border-color: rgba(17, 17, 17, 0.18);
+    }
+
+    .cta-button--soldout {
+        background: #e8e9ec;
+        color: var(--fk-muted);
+        cursor: not-allowed;
+    }
+
+    .whatsapp-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 16px;
+        color: var(--fk-text);
+        text-decoration: none;
+        font-weight: 700;
+    }
+
+    .whatsapp-link svg {
+        width: 18px;
+        height: 18px;
+        color: #25D366;
+    }
+
+    .trust-list {
+        list-style: none;
+        padding: 0;
+        margin: 20px 0 0;
+        display: grid;
+        gap: 10px;
+    }
+
+    .trust-list li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--fk-text);
+        font-weight: 600;
+    }
+
+    .trust-list svg {
+        width: 18px;
+        height: 18px;
+        color: var(--fk-success);
+        flex-shrink: 0;
+    }
+
+    .detail-section {
+        margin-top: 38px;
+        display: grid;
+        gap: 14px;
+    }
+
+    .detail-panel {
+        background: var(--fk-card);
+        border: 1px solid var(--fk-border);
+        border-radius: 18px;
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.02);
+        overflow: hidden;
+    }
+
+    .detail-panel summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 18px 20px;
+        cursor: pointer;
+        list-style: none;
+        font-weight: 700;
+    }
+
+    .detail-panel summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .detail-panel summary::after {
+        content: "+";
+        font-size: 1.7rem;
+        line-height: 1;
+        color: var(--fk-muted);
+    }
+
+    .detail-panel[open] summary::after {
+        content: "−";
+    }
+
+    .detail-content {
+        padding: 0 20px 20px;
+        color: rgba(17, 17, 17, 0.8);
+    }
+
+    .detail-content p {
+        margin: 0 0 0.9rem;
+        line-height: 1.7;
+    }
+
+    .spec-grid {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+    }
+
+    .spec-grid div {
+        display: grid;
+        grid-template-columns: minmax(150px, 170px) 1fr;
+        gap: 12px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(17, 17, 17, 0.08);
+    }
+
+    .spec-grid div:first-child {
+        padding-top: 0;
+        border-top: none;
+    }
+
+    .spec-grid dt {
+        color: var(--fk-muted);
+        font-weight: 700;
+    }
+
+    .spec-grid dd {
+        margin: 0;
+        color: var(--fk-text);
+        font-weight: 600;
+    }
+
+    .related-section {
+        margin-top: 42px;
+    }
+
+    .related-header h2 {
+        margin: 0 0 18px;
+        font-size: clamp(1.8rem, 2vw, 2.5rem);
+        letter-spacing: -0.05em;
+    }
+
+    .related-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .lightbox-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+        background: rgba(17, 17, 17, 0.76);
+    }
+
+    .lightbox-panel {
+        position: relative;
+        max-width: 88vw;
+        max-height: 88vh;
+        border-radius: 18px;
+        padding: 18px;
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .lightbox-image {
+        display: block;
+        max-width: 100%;
+        max-height: 80vh;
+        object-fit: contain;
+        border-radius: 12px;
+    }
+
+    .lightbox-close,
+    .lightbox-nav {
+        position: absolute;
+        top: 18px;
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        background: rgba(17, 17, 17, 0.4);
+        color: #fff;
+        font-size: 2rem;
+        line-height: 1;
+        z-index: 2;
+    }
+
+    .lightbox-close {
+        right: 18px;
+    }
+
+    .lightbox-nav {
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .lightbox-nav--prev { left: 18px; }
+    .lightbox-nav--next { right: 18px; }
+
     .cart-toast {
         position: fixed;
         top: 20px;
@@ -168,55 +871,36 @@ else
         animation: toastFade 2.5s ease forwards;
     }
 
-    .soldout-color {
-        opacity: 0.6;
-        background: #f8f9fa;
-        border-color: #dee2e6;
-        color: #6c757d;
+    .loading-card {
+        max-width: 500px;
+        margin: 32px auto 0;
+        padding: 24px;
+        background: var(--fk-card);
+        border: 1px solid var(--fk-border);
+        border-radius: 20px;
     }
 
-    .color-sold-tag {
-        display: inline-block;
-        margin-left: 0.5rem;
-        font-size: 0.7rem;
+    .loading-line {
+        height: 18px;
         border-radius: 999px;
-        background: #f1f3f5;
-        color: #495057;
-        padding: 0.18rem 0.5rem;
-        vertical-align: middle;
+        background: linear-gradient(90deg, #ececec 25%, #f4f4f4 50%, #ececec 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.4s ease-in-out infinite;
+        margin-bottom: 12px;
     }
 
-    .size-button {
-        min-width: 54px;
+    .loading-line--title {
+        height: 46px;
+        width: 70%;
     }
 
-    .soldout-size {
-        background: #f3f4f5;
-        border-color: #e9ecef;
-        color: #adb5bd;
-        text-decoration: line-through;
-        text-decoration-thickness: 2px;
-        text-decoration-color: rgba(108, 117, 125, 0.75);
+    .loading-line--short {
+        width: 55%;
     }
 
-    .quantity-box {
-        min-height: 44px;
-    }
-
-    .quantity-button {
-        min-width: 44px;
-        min-height: 44px;
-    }
-
-    .stock-hint {
-        margin-top: 0.5rem;
-        font-size: 0.8rem;
-        color: #b42318;
-        font-weight: 600;
-    }
-
-    .stock-hint.warning {
-        color: #b42318;
+    @@keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
     }
 
     @@keyframes toastFade {
@@ -224,6 +908,37 @@ else
         10% { opacity: 1; transform: translateY(0); }
         80% { opacity: 1; }
         100% { opacity: 0; transform: translateY(-6px); }
+    }
+
+    @@media (max-width: 991.98px) {
+        .product-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .buy-panel {
+            position: static;
+            padding: 20px 18px;
+        }
+
+        .related-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @@media (max-width: 575.98px) {
+        .product-page-shell {
+            padding-left: 12px;
+            padding-right: 12px;
+        }
+
+        .thumbnail-button {
+            width: 68px;
+            height: 68px;
+        }
+
+        .related-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
@@ -240,6 +955,9 @@ else
     private int Quantity = 1;
     private bool ShowToast;
     private string? SelectionMessage;
+    private bool IsLightboxOpen;
+    private int LightboxIndex;
+    private List<Product> RelatedProducts = new();
 
     private bool IsProductSoldOut => Product is not null && Product.Variants.All(v => v.Stock <= 0);
 
@@ -290,6 +1008,7 @@ else
 
         if (Product is null)
         {
+            RelatedProducts = new List<Product>();
             return;
         }
 
@@ -299,7 +1018,51 @@ else
             SelectedImage = ImageUrls[0];
         }
 
+        RelatedProducts = await GetRelatedProductsAsync();
         ApplyPreferredSelection();
+    }
+
+    private async Task<List<Product>> GetRelatedProductsAsync()
+    {
+        if (Product is null)
+        {
+            return new List<Product>();
+        }
+
+        var related = await DbContext.Products
+            .AsNoTracking()
+            .Where(p => p.Id != Product.Id && p.Category == Product.Category)
+            .OrderByDescending(p => p.Id)
+            .Take(4)
+            .ToListAsync();
+
+        if (related.Count >= 4)
+        {
+            return related;
+        }
+
+        var more = await DbContext.Products
+            .AsNoTracking()
+            .Where(p => p.Id != Product.Id && p.Gender == Product.Gender)
+            .OrderByDescending(p => p.Id)
+            .Take(4)
+            .ToListAsync();
+
+        var seen = new HashSet<int>(related.Select(p => p.Id));
+        foreach (var item in more)
+        {
+            if (seen.Count >= 4)
+            {
+                break;
+            }
+
+            if (seen.Add(item.Id))
+            {
+                related.Add(item);
+            }
+        }
+
+        return related.Take(4).ToList();
     }
 
     private void ApplyPreferredSelection()
@@ -397,6 +1160,25 @@ else
         return int.TryParse(size, out var numeric) ? numeric : int.MaxValue;
     }
 
+    private string GetColorSwatch(string color)
+    {
+        return color switch
+        {
+            "Black" => "#111111",
+            "White" => "#f5f5f5",
+            "Brown" => "#7a4c2d",
+            "Blue" => "#1f5fb8",
+            "Red" => "#b8272a",
+            "Grey" => "#9aa0a6",
+            "Green" => "#3d8b5d",
+            "Navy" => "#1b2c42",
+            "Silver" => "#c7c9cc",
+            "Tan" => "#d7b38b",
+            "Gold" => "#d6ad45",
+            _ => "#d1d5db"
+        };
+    }
+
     private bool IsColorSoldOut(string color)
     {
         if (Product is null)
@@ -418,6 +1200,7 @@ else
 
         var maxAllowed = GetMaxAddableQuantity(SelectedVariant);
         var effectiveLimit = SelectedVariant.Stock;
+
         if (maxAllowed > 0)
         {
             effectiveLimit = Math.Min(effectiveLimit, maxAllowed);
@@ -429,6 +1212,66 @@ else
         }
 
         return Math.Clamp(Quantity, 1, effectiveLimit);
+    }
+
+    private void SelectImage(int index)
+    {
+        if (ImageUrls.Count == 0 || index < 0 || index >= ImageUrls.Count)
+        {
+            return;
+        }
+
+        SelectedImage = ImageUrls[index];
+        if (IsLightboxOpen)
+        {
+            LightboxIndex = index;
+        }
+    }
+
+    private void OpenLightbox()
+    {
+        if (ImageUrls.Count == 0)
+        {
+            return;
+        }
+
+        LightboxIndex = ImageUrls.IndexOf(SelectedImage);
+        if (LightboxIndex < 0)
+        {
+            LightboxIndex = 0;
+        }
+
+        IsLightboxOpen = true;
+    }
+
+    private void CloseLightbox()
+    {
+        IsLightboxOpen = false;
+    }
+
+    private void MoveLightbox(int delta)
+    {
+        if (ImageUrls.Count == 0)
+        {
+            return;
+        }
+
+        LightboxIndex = (LightboxIndex + delta + ImageUrls.Count) % ImageUrls.Count;
+        SelectedImage = ImageUrls[LightboxIndex];
+    }
+
+    private string BuildWhatsAppUrl()
+    {
+        if (Product is null)
+        {
+            return "#";
+        }
+
+        var selectedColor = SelectedColor ?? "Unknown";
+        var selectedSize = SelectedSize ?? "N/A";
+        var messageText = $"Hi Frey Kicks, I'm interested in {Product.Name} ({selectedColor}, size {selectedSize}). Is it available?";
+        var waNumber = "2349079770845";
+        return $"https://wa.me/{waNumber}?text={Uri.EscapeDataString(messageText)}";
     }
 
     private void SelectColor(string color)
@@ -585,7 +1428,7 @@ else
 
             var payload = System.Text.Json.JsonSerializer.Serialize(cartItems);
             var encodedPayload = Uri.EscapeDataString(payload);
-            await JS.InvokeVoidAsync("eval", $"document.cookie = \"guest_cart={encodedPayload}; path=/; max-age=604800;\";");
+            await JS.InvokeVoidAsync("eval", $"document.cookie = \"guest_cart={encodedPayload}; path=/; max-age=604800;\"");
         }
         catch (Exception)
         {
